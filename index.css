@@ -1,0 +1,32 @@
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+.glass-card { background: rgba(30, 30, 30, 0.6); backdrop-filter: blur(12px); border: 1px solid #2D2D2D; }
+html, body { 
+    background-color: #131313; 
+    color: #e5e2e1; 
+    font-family: 'Hanken Grotesk', sans-serif; 
+    overflow: hidden !important; 
+    margin: 0; 
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    user-select: none;
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+.lang-btn { opacity: 0.5; transition: all 0.2s; cursor: pointer; border: 2px solid transparent; }
+.lang-btn:hover { opacity: 1; transform: scale(1.1); }
+.lang-btn.active { opacity: 1; border-color: #c0c1ff; transform: scale(1.1); }
+
+.res-btn { border: 2px solid #464554; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); min-height: 60px; }
+.res-btn.active { border-color: #c0c1ff; color: #c0c1ff; background: rgba(192, 193, 255, 0.05); }
+
+.loading-shimmer {
+    background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.custom-scroll::-webkit-scrollbar { width: 6px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+.custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }

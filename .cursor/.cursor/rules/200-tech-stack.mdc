@@ -1,0 +1,59 @@
+---
+description: Code quality, styling guidelines, package constraints, and tech stack standards. Loaded when working on source code files.
+globs: ["src/**", "app/**", "pages/**", "components/**", "*.tsx", "*.ts", "*.jsx", "*.js", "*.css", "*.html"]
+alwaysApply: false
+---
+# 🛠️ Tech Stack & Coding Standards Guide
+
+You must adhere to the highest standards of software engineering, tailor-made for a frictionless, visual, and highly stable vibe coding experience.
+
+---
+
+## 🎨 Styling & Design Aesthetics (Estetik ve Görsel Tasarım)
+Visual excellence is our top priority. The Vibe Coder's apps must look stunning, premium, and extremely modern.
+
+* **Curated Harmonious Colors:** Avoid raw primary colors (plain red `#FF0000`, plain blue, plain green). Use elegant, modern, tailored HSL color palettes:
+  * Slate, zinc, and neutral grays for dark/light structures.
+  * Indigo, violet, emerald, and amber for brand accents.
+  * Sleek gradients (e.g., `bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500`) for high-fidelity branding.
+* **Premium Styling Tokens:**
+  * Use **glassmorphism** overlays (`backdrop-blur-md bg-white/10 border border-white/20`) for modern overlays.
+  * Apply soft, layered shadows (`shadow-xl`, `shadow-2xl`, custom neon glows) to elevate card elements.
+  * Use premium typography hierarchies (Inter, Outfit, Roboto) instead of standard system sans-serif fonts.
+* **Transitions & Micro-Animations:**
+  * Every hover state must feel "alive." Add smooth transition durations (`transition-all duration-300 ease-out`).
+  * Add scale feedback on hover (`hover:scale-105 active:scale-95`).
+  * Use keyframe animations for loading, entrance states, and graph rises.
+
+---
+
+## 🛡️ Zero-Bugs & Anti-Regression Guard (Hata ve Regresyon Koruması)
+Since the user cannot fix bugs, you must act as a perfect defense mechanism.
+
+1. **Compilable Code (Çalışabilir Kod):** Never write code that breaks TypeScript compiler compilation or triggers lint errors.
+2. **Regression Check (Eski Kodu Koruma):** When editing a file, review the existing logic. Do not break unrelated functionalities.
+3. **No Magic Placeholders (Kesintisiz Kod):**
+   * Write complete file edits. Do not use shortcuts.
+   * If you need to make changes across a 500-line file, do not truncate sections. Provide clean, fully written updates so the user can just hit "Accept."
+4. **Environment Variables:**
+   * Never commit secret keys or tokens.
+   * Read environment values using secure patterns (e.g., `process.env.VITE_API_URL` or `process.env.NEXT_PUBLIC_...`).
+
+---
+
+## 📦 Package Management Guardrails (Paket Yönetim Kuralı)
+* Keep dependencies lightweight.
+* Do not install external libraries for simple tasks (e.g., do not install `lodash` for simple array grouping; write a native helper).
+* Always verify the build is clean after installing any user-approved packages.
+
+---
+
+## 🔒 Security Rules (Güvenlik Kuralları)
+* NEVER hardcode API keys, passwords, tokens, or database URLs in source code files.
+* Always use `.env.local` or `process.env.*` for secrets. Verify `.env*` files are in `.gitignore`.
+* NEVER log sensitive data (tokens, passwords, PII) via `console.log()` or any logger.
+* Sanitize ALL user inputs to prevent XSS attacks.
+* API endpoints must NEVER be exposed in client-side JavaScript bundles.
+* HTTPS is mandatory — no HTTP API calls.
+* Add rate limiting and brute-force protection on auth endpoints.
+* Treat ALL AI-generated code touching auth, payments, or PII as untrusted — flag for manual review.

@@ -1,0 +1,57 @@
+{
+  "_comment": "Bu dosya, yapay zekanıza süper güçler verecek Model Context Protocol (MCP) ayar şablonudur. İhtiyacınız olan sunucuları Cursor veya Claude Desktop ayarlarınıza ekleyebilirsiniz. Başlangıç için filesystem + context7 + playwright yeterlidir.",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./"],
+      "env": {},
+      "_description": "Yapay zekanın proje klasörüne güvenli erişim sağlamasını ve dosyaları otomatik düzenlemesini sağlar. Yolu projenize göre değiştirin."
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "env": {},
+      "_description": "[KRİTİK] Kütüphanelerin güncel, sürüme özel dokümanlarını getirir. Yapay zekanın eski/yanlış API kullanmasını önler. Prompt'lara 'use context7' ekleyin."
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"],
+      "env": {},
+      "_description": "Tarayıcı otomasyonu — 40+ aksiyon (navigasyon, form doldurma, test). E2E test ve frontend geliştirme için #1 araç."
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "env": {},
+      "_description": "Yapay zekaya yapılandırılmış, adım adım düşünme yeteneği verir. Karmaşık mimari kararlar ve debug süreçlerinde hayati."
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": {},
+      "_description": "Bilgi grafiği tabanlı kalıcı hafıza. Yapay zekanın oturumlar arası tercihleri ve kararları hatırlamasını sağlar."
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"],
+      "env": {},
+      "_description": "Web sayfalarını ve dokümanları okuyup yapay zekanın bağlamına ekler."
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "YOUR_BRAVE_API_KEY_HERE"
+      },
+      "_description": "İnternette canlı arama yapma. Brave API anahtarı gerektirir (ücretsiz plan mevcut: api.search.brave.com)."
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_TOKEN_HERE"
+      },
+      "_description": "GitHub entegrasyonu — issue yönetimi, PR açma, kod arama, repo yönetimi."
+    }
+  }
+}

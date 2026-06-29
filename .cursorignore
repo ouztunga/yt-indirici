@@ -1,0 +1,39 @@
+# Cursor Indexing Ignore List
+# Bu dosya, Cursor'ın kod dizinleme (indexing) yaparken gereksiz dosyaları taramasını engeller.
+
+# Bağımlılıklar
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Derleme Çıktıları
+dist/
+build/
+.next/
+out/
+.turbo/
+target/
+
+# Ağır Medya Dosyaları
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.mp4
+*.pdf
+*.zip
+*.tar.gz
+
+# Loglar ve Geçici Dosyalar
+*.log
+.eslintcache
+.parcel-cache
+tmp/
+temp/
+
+# Sistem
+.DS_Store
+Thumbs.db

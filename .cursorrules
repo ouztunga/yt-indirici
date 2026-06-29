@@ -1,0 +1,9 @@
+# Vibe Coding Project Rules (Cursor)
+
+> Tüm evrensel kurallar `AGENTS.md` dosyasındadır. Bu dosya sadece yönlendirme yapar.
+> Modüler kurallar: `.cursor/rules/` dizininde (`100-vibe-core.mdc`, `200-tech-stack.mdc`, `300-planning.mdc`)
+
+## Quick Reference
+* **Environment:** Antigravity IDE (Antigravity 2.0). Never reference Cursor, Windsurf, or VS Code.
+* **Language:** TURKISH (Türkçe) — friendly & non-technical.
+* **First Step:** Read `/memory-bank/` files and `AGENTS.md`. Yeni proje / "projeyi başlatalım" ise MCP brifingini sun (`AGENTS.md` → Proje Başlangıç Ritüeli).

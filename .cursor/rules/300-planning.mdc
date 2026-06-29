@@ -1,0 +1,49 @@
+---
+description: Mandatory "Plan-before-Act" protocol for AI coding sessions.
+globs: *
+alwaysApply: true
+---
+# 🗺️ "Plan-before-Act" & Execution Protocol
+
+To maintain 100% control, prevent chaotic file changes, and align perfectly with the Vibe Coder's vision, you MUST follow this strict two-phase execution protocol for any task that goes beyond a trivial single-line change.
+
+---
+
+## 🧭 Phase 1: Planning Mode (Planlama Aşaması)
+Before making ANY edits to existing code, creating new files, or running build commands, you MUST stop and present a clear, easy-to-read plan in **TURKISH**.
+
+### Your Planning Response Structure:
+1. **Hedef Tanımı (Goal Summary):** Summarize in 1-2 sentences what you understand the user wants, and what success looks like.
+2. **Kritik Kararlar (Key Decisions):** Highlight any architectural choices, UX considerations, or styling ideas.
+3. **Yapılacak Değişiklikler (Proposed File Changes):** List precisely which files you will create, edit, or delete.
+   * Format: `[NEW]` (Yeni dosya), `[MODIFY]` (Düzenlenecek dosya), `[DELETE]` (Silinecek dosya).
+4. **Onay Çağrısı (Call to Action):** Ask the Vibe Coder for permission to proceed.
+   * *Example:* "Eğer bu plan sizin için uygunsa, onay vermenizle birlikte kodlamaya başlayacağım!"
+
+*Note: You may inspect files to formulate this plan, but DO NOT run any modifying write/command tools during Phase 1.*
+
+---
+
+## 🏃‍♂️ Phase 2: Act & Execution Mode (Uygulama Aşaması)
+Once the Vibe Coder replies with "onay", "devam et", "approve", or similar consent, you enter Phase 2.
+
+### Execution Rules:
+1. **Update task.md:** If a `task.md` or progress checklist exists, mark items as `[/]` (in progress) as you work.
+2. **Minimal Diffs Only:** DO NOT rewrite entire files for small changes. Provide precise line-specific or block-specific code replacement outputs to save token bandwidth.
+3. **5-Step Limit & Confirm:** If execution requires more than 5 autonomous steps, pause and ask the Vibe Coder for explicit direction or confirmation before continuing.
+4. **Compressed Terminal Output:** Never read whole verbose terminal builds or logs. Grep or target only the key error/success details (max 50 lines) to keep the context size slim.
+5. **Step-by-Step Writing:** Build the dependency files first (e.g., helper functions, custom hooks, styles) before assembling the main UI pages.
+6. **Build & Validation:** If terminal commands are supported, run the local build (`npm run build` or `npm run lint`) to verify your code compiles and is completely error-free.
+7. **Memory Bank Update:** As the very last step of your turn, update `memory-bank/activeContext.md` and `memory-bank/progress.md` with what was accomplished, the current state of the app, and next tasks.
+8. **Human Rationale Raporu (Açıklama):** Write a concise, polite Turkish report explaining what was created and how they can run or test it.
+
+---
+
+## 🔄 Git Checkpoint Strategy (Git Güvenlik Ağı)
+Git is your flight data recorder. Every checkpoint protects the Vibe Coder from AI mistakes.
+
+1. **Before Major Changes:** Run `git add . && git commit -m "checkpoint: before [feature/fix name]"` BEFORE starting any large feature or risky refactor.
+2. **After Success:** Run `git add . && git commit -m "feat: [Turkish description of what was completed]"` after each successfully completed feature.
+3. **Before Debug Loops:** If you are about to enter a debugging cycle, commit the current state first so the user can revert if needed.
+4. **Commit Message Format:** Use conventional commit prefixes: `feat:`, `fix:`, `refactor:`, `style:`, `docs:`, `chore:`.
+5. **Never force-push or rewrite history** without explicit user approval.

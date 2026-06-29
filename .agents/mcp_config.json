@@ -1,0 +1,23 @@
+{
+  "_comment": "Antigravity 2.0 / Antigravity IDE proje bazli MCP ayarlari. Kuresel ayar icin: ~/.gemini/config/mcp_config.json (Windows: %USERPROFILE%\\.gemini\\config\\mcp_config.json). Proje bazli ayar kuresel ayari ezer.",
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "github": {
+      "serverUrl": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer BURAYA_GITHUB_TOKEN_YAPIŞTIR"
+      }
+    }
+  }
+}
