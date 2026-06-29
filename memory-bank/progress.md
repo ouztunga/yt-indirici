@@ -1,4 +1,4 @@
-<!-- last_updated: 2026-06-06 -->
+<!-- last_updated: 2026-06-29 -->
 # 📈 Progress Tracker / İlerleme Takipçisi
 
 > **AI Instruction:** Bu dosya projenin yol haritasıdır. Tamamlanan özellikleri, bekleyen maddeleri ve bilinen hataları takip eder. Görevler tamamlandıkça bu dosyayı güncel tutun.
@@ -12,6 +12,7 @@
 *   [x] Dairesel referans kilitlenmesi (circular reference recursion) giderildi.
 *   [x] `create_window` TypeError (icon parametresi) hatası çözüldü.
 *   [x] Windows 11 Erişilebilirlik kilitlenme döngüsü engellendi (`--disable-renderer-accessibility`).
+*   [x] Windows 11 Erişilebilirlik (Accessibility) kilitlenme hatası çözüldü (sys.setrecursionlimit kaldırıldı ve pywebview susturuldu).
 *   [x] Dosya isimleri küçük harfe standartlaştırıldı (`indirici.py`, `index.html`).
 *   [x] Duraklatma, Devam Ettirme ve İndirmeyi İptal Etme (Pause/Resume/Stop) özellikleri eklendi.
 *   [x] pywebview-JS iletişim köprüsü `json.dumps` serileştirmesi ile güçlendirildi.
@@ -25,13 +26,14 @@
 *   [x] **Fallow (Codebase Intelligence) Entegrasyonu:** Fallow kod zekası entegrasyonu tamamlandı, Claude Code için `.claude` altındaki `/fallow` komut ve yetenek (skill) şablonları eklendi.
 *   [x] **Temizlik:** Güncelleme sonrasında geçici `vibecoding` ve yeni iletilen `vibecoding_yeni` klasörleri silinerek çalışma alanı temiz tutuldu.
 *   [x] **Arayüz Modülerizasyonu:** Monolitik `index.html` (624 satır) dosyası HTML, CSS (`index.css`) ve JS (`index.js`) olarak modülerleştirildi. Satır limiti standartlarına uyuldu. `indirici.py` ve `derle.bat` dosyaları bu yapıya göre güncellendi.
+*   [x] **Nihai Derleme:** Yeni kodlar ve düzeltmelerle birlikte nihai `indirici.exe` derlemesinin yapılması.
+*   [x] **Git & GitHub Senkronizasyonu:** Yeni lokal Git deposu kuruldu ve `ouztunga/yt-indirici` GitHub reposuna force push edilerek eşitlendi.
 
 ### Bekleyen Özellikler (Pending Features) ⏳
 *   [ ] İndirme motorunun kararlılığının son kez test edilmesi (`baslat.bat` üzerinden).
 *   [ ] Fallow'un tespit ettiği JS tekrarlarının giderilmesi (refactoring).
 *   [ ] Toplu indirme (batch download) desteği eklenmesi.
 *   [ ] Arayüzde karanlık/aydınlık tema (dark/light mode) geçiş düğmesi eklenmesi.
-*   [ ] Yeni kodlar ve düzeltmelerle birlikte nihai `indirici.exe` derlemesinin yapılması.
 
 ---
 
@@ -41,11 +43,12 @@
 *   **Çözüldü:** Logo base64 modal hatası — LOGO_DATA karşılaştırması ile önlendi.
 *   **Çözüldü:** `download()` path güvenliği — fallback olarak `self.download_path` kullanılıyor.
 *   **Çözüldü:** Playlist modunda `updateSizeIfMatch` anlamsız güncelleme — `isPlaylistActive` kontrolü eklendi.
+*   **Çözüldü:** Windows 11 Accessibility/EdgeChromium circular log çökmesi — pywebview logger susturuldu.
 *   **Bilinen Hata:** ffmpeg.exe dosyası çalışma dizininde olmadığında video birleştirmeleri başarısız olur (Arayüzde uyarı veriliyor).
 
 ---
 
 ## 📊 Yapım İstatistikleri (Summary of Build Metrics)
-*   **Durum (Status):** 🚀 Arayüz Modüler Yapıya Geçti. Derleme Başarıyla Doğrulandı.
+*   **Durum (Status):** 🚀 Tüm Düzeltmeler Tamamlandı, EXE Başarıyla Paketlendi ve GitHub'a Yüklendi.
 *   **Yüklenen Kurallar (Engine Rules):** 3 Modüler kural dosyası, 4 evrensel editör kuralı.
 *   **Hafıza Durumu (Memory State):** Aktif ve güncel.
