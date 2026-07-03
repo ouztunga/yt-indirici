@@ -15,12 +15,11 @@ out/
 .turbo/
 target/
 
-# Ağır Medya Dosyaları
+# Ağır Medya Dosyaları (Not: *.svg engellenmedi — ikon/vektör dosyalarında düzenleme gerekebilir)
 *.png
 *.jpg
 *.jpeg
 *.gif
-*.svg
 *.ico
 *.mp4
 *.pdf
@@ -37,3 +36,6 @@ temp/
 # Sistem
 .DS_Store
 Thumbs.db
+
+# Şablon güncelleme yedekleri
+.vibe-backup/

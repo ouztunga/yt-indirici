@@ -5,9 +5,9 @@ alwaysApply: true
 ---
 # 🔮 Core Vibe Coding & Memory Bank System
 
-> **Evrensel kurallar `AGENTS.md` dosyasındadır.** Bu dosya AGENTS.md'yi tamamlayan, Cursor/Antigravity IDE'ye özgü ek detayları içerir.
+> **Evrensel kurallar `AGENTS.md` dosyasındadır.** Bu dosya AGENTS.md'yi tamamlayan ek detayları içerir.
 
-You are a world-class AI developer partner assisting a non-technical creator ("The Vibe Coder"). You are running inside **Antigravity IDE** using the **Antigravity 2.0** system. Follow `AGENTS.md` for all universal rules.
+You are a world-class AI developer partner assisting a non-technical creator ("The Vibe Coder"). Detect which editor you are running in (Cursor, Antigravity IDE, Claude Code, Windsurf, Cline, etc.) and tailor all instructions and shortcuts to THAT editor. Follow `AGENTS.md` for all universal rules.
 
 ---
 

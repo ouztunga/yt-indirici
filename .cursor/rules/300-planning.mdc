@@ -17,15 +17,51 @@ Before making ANY edits to existing code, creating new files, or running build c
 2. **Kritik Kararlar (Key Decisions):** Highlight any architectural choices, UX considerations, or styling ideas.
 3. **Yapılacak Değişiklikler (Proposed File Changes):** List precisely which files you will create, edit, or delete.
    * Format: `[NEW]` (Yeni dosya), `[MODIFY]` (Düzenlenecek dosya), `[DELETE]` (Silinecek dosya).
-4. **Onay Çağrısı (Call to Action):** Ask the Vibe Coder for permission to proceed.
-   * *Example:* "Eğer bu plan sizin için uygunsa, onay vermenizle birlikte kodlamaya başlayacağım!"
+4. **Onay Çağrısı (Call to Action):** Mimar modeli **bu sohbette onay beklemez ve kod yazmaz.** Onay, hızlı modelde verilir (adım 5).
+5. **Model Değiştirme Çağrısı (Handoff CTA — ZORUNLU, kelimesi kelimesine):** Planın **en sonunda**, Handoff Özetinden hemen önce veya sonra, Vibe Coder'a yüksek sesle şunu söyle:
 
-*Note: You may inspect files to formulate this plan, but DO NOT run any modifying write/command tools during Phase 1.*
+   > ⚡ **Şimdi senin sıran:** Editöründeki model seçiciden **hızlı/ucuz modele geç** (Flash, Sonnet, Composer Fast vb.), sonra **"onay"** veya **"plana göre onay, devam et"** yaz. Ben burada duruyorum — kodlamayı hızlı model yapacak, böylece token harcamayız.
+
+   Ardından kopyalanabilir **Handoff Özeti** ekle (Hedef + dosya listesi + kritik kararlar, max ~15 satır).
+
+*Note: You may inspect files to formulate this plan, but DO NOT run any modifying write/command tools during Phase 1. Even if the IDE is in "Turbo Mode" (auto-approving actions), you must pause, output your plan, and wait for the user to type "onay" or "approve" in the chat before invoking any write, replace, or execution tools.*
+
+---
+
+## 🔄 Model Handoff Protocol (Mimar → İşçi Ayrımı)
+
+Token tasarrufu için planlama ve kodlama **farklı modellerde** yapılır:
+
+| Rol | Model tipi | Ne yapar? | Ne yapmaz? |
+|-----|------------|-----------|------------|
+| **Mimar (Planner)** | Akıllı / thinking (Opus, Pro, GPT-5 vb.) | Dosyaları okur, mimari karar verir, Phase 1 planı + Handoff Özeti yazar | Kod yazmaz, build çalıştırmaz |
+| **İşçi (Worker)** | Hızlı / ucuz (Flash, Sonnet, Composer Fast vb.) | Plana göre Phase 2'de kod yazar, test eder | Sıfırdan plan kurmaz (plan net değilse sorar) |
+
+### Vibe Coder akışı (3 adım)
+1. **Akıllı modelle plan iste** — *"Önce planı hazırla, onaylayınca kodlayacağız."*
+2. **Plan gelince modeli değiştir** — editörün model seçicisinden hızlı modele geç (aynı sohbet veya yeni sohbet).
+3. **Hızlı modelle onay ver** — *"Plana göre onay, devam et"* veya Handoff Özetini yapıştır.
+
+### Handoff Özeti şablonu (Mimar plan sonunda üretir)
+```
+📋 HANDOFF ÖZETİ (Hızlı modele yapıştır)
+Hedef: ...
+Kritik kararlar: ...
+Dosyalar: [NEW] ... | [MODIFY] ... | [DELETE] ...
+Onay komutu: "onay" veya "plana göre onay, devam et"
+```
+
+> **Mimar kuralı:** Phase 1 bitince mutlaka *"hızlı modele geç ve onay de"* mesajını ver; bu adımı atlama.
+
+### İşçi model kuralları (Phase 2 girişi)
+* Kullanıcı "onay", "devam et", "plana göre onay" derse → plandaki dosya listesine sadık kal, **yeniden plan yazma**.
+* Plan sohbette yoksa → `memory-bank/activeContext.md` veya kullanıcının yapıştırdığı Handoff Özetine bak; yine yoksa kısa sor.
+* Sadece basit tek satırlık değişikliklerde model değiştirmeye gerek yok.
 
 ---
 
 ## 🏃‍♂️ Phase 2: Act & Execution Mode (Uygulama Aşaması)
-Once the Vibe Coder replies with "onay", "devam et", "approve", or similar consent, you enter Phase 2.
+Once the Vibe Coder replies with "onay", "devam et", "approve", "plana göre onay", or similar consent, you enter Phase 2.
 
 ### Execution Rules:
 1. **Update task.md:** If a `task.md` or progress checklist exists, mark items as `[/]` (in progress) as you work.

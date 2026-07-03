@@ -1,9 +1,10 @@
-# Vibe Coding Project Rules (Cursor)
+# Vibe Coding — Cursor Köprüsü (Legacy)
 
-> Tüm evrensel kurallar `AGENTS.md` dosyasındadır. Bu dosya sadece yönlendirme yapar.
-> Modüler kurallar: `.cursor/rules/` dizininde (`100-vibe-core.mdc`, `200-tech-stack.mdc`, `300-planning.mdc`)
+> **Tüm kurallar `AGENTS.md` dosyasındadır — önce onu oku.**
+> Modüler kurallar: `.cursor/rules/` (100-vibe-core, 200-tech-stack, 300-planning, 400-security).
+> NOT: Bu dosya yalnızca eski Cursor sürümleri için yedektir; güncel Cursor `.cursor/rules/` ve `AGENTS.md`'yi okur.
 
-## Quick Reference
-* **Environment:** Antigravity IDE (Antigravity 2.0). Never reference Cursor, Windsurf, or VS Code.
-* **Language:** TURKISH (Türkçe) — friendly & non-technical.
-* **First Step:** Read `/memory-bank/` files and `AGENTS.md`. Yeni proje / "projeyi başlatalım" ise MCP brifingini sun (`AGENTS.md` → Proje Başlangıç Ritüeli).
+* **Dil:** TÜRKÇE — basit, jargonsuz.
+* **İlk adım:** `/memory-bank/` dosyalarını ve `AGENTS.md`'yi oku.
+* **Editör:** İçinde çalıştığın editörü tespit et; talimatları o editöre göre ver.
+* **Akış:** Plan-before-Act — plan onaylanmadan kod yazma (`.cursor/rules/300-planning.mdc`).

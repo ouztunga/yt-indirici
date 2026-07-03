@@ -1,13 +1,12 @@
 # AGENTS.md — Universal AI Agent Rules
 
 > This is the single source of truth for ALL AI coding agents working on this project.
-> Primary Environment: Antigravity IDE (using Antigravity 2.0).
-> Supported Fallbacks: Cursor, Claude Code, GitHub Copilot, Windsurf, Gemini CLI, Aider, Cline/Roo Code.
+> Supported Environments (editor-agnostic): Cursor, Antigravity IDE (Antigravity 2.0), Claude Code, GitHub Copilot, Windsurf, Gemini CLI, Aider, Cline/Roo Code.
 
 ---
 
 ## 🎯 Project Identity
-* **IDE Environment:** Antigravity IDE (using Antigravity 2.0). ALWAYS reference features, shortcuts, and instructions for Antigravity IDE. NEVER mention Cursor, Windsurf, or VS Code unless explicitly asked.
+* **IDE Environment (Editör-Bağımsız):** Bu şablon birden fazla editörde kullanılır (Cursor, Antigravity IDE, Claude Code, Windsurf, Cline vb.). İçinde çalıştığın editörü tespit et ve TÜM talimat, menü tarifi ve kısayolları **o anki editöre göre** ver. Başka bir editörün menülerini tarif etme; hangi editörde olduğundan emin değilsen kullanıcıya sor.
 * **Developer Type:** Non-technical Vibe Coder — all code is written by AI agents.
 * **Communication Language:** TURKISH (Türkçe) — always respond in simple, jargon-free Turkish.
 * **Documentation:** `/memory-bank/` directory is the persistent memory system.
@@ -70,13 +69,16 @@ Projeyi anlat, planı hazırlayayım!
 ---
 
 ## 🗺️ Workflow: Plan-before-Act
-1. **Phase 1 — Plan:** Before ANY code changes, present a clear Turkish plan:
+1. **Phase 1 — Plan (Mimar modeli):** Before ANY code changes, present a clear Turkish plan:
    - Goal summary (Hedef Tanımı)
    - Key decisions (Kritik Kararlar)
    - File changes list: `[NEW]`, `[MODIFY]`, `[DELETE]`
    - Ask for approval (Onay Çağrısı)
-2. **Phase 2 — Execute:** Only after user says "onay", "devam et", or "approve".
-3. **Phase 3 — Verify:** Run build/lint commands if available. Update memory bank.
+   - **Model handoff (ZORUNLU):** Plan bitince Vibe Coder'a açıkça söyle: *"Hızlı modele geç ve **onay** de."* Mimar bu sohbette onay beklemez; Handoff Özeti ekle (`.cursor/rules/300-planning.mdc`).
+   - **⚠️ Turbo Mode Koruması (KRİTİK):** Editörün "Turbo Mode" ayarı açık olsa bile, planlama aşamasında (Phase 1) **KESİNLİKLE hiçbir dosya yazma (write_file, replace_file_content vb.) veya komut çalıştırma aracı çağırmayın.** Yalnızca okuma araçlarını kullanın ve durup kullanıcının sohbete "onay" yazmasını bekleyin. Aksi takdirde Turbo Mode yüzünden kodlar kontrolsüzce yazılır.
+2. **Phase 1.5 — Model Switch (Vibe Coder):** Switch from smart/thinking model to fast model (Flash, Sonnet, Composer Fast, etc.) in the same chat or a new one.
+3. **Phase 2 — Execute (İşçi modeli):** Only after user says "onay", "devam et", "plana göre onay", or "approve". Follow the existing plan — do **not** replan unless the plan is missing or ambiguous.
+4. **Phase 3 — Verify:** Run build/lint commands if available. Update memory bank.
 
 ---
 
@@ -90,12 +92,12 @@ Projeyi anlat, planı hazırlayayım!
 
 ### Token & Cost Protection (Token ve Maliyet Koruma)
 * **Modular Code First (Modüler Yapı):** NEVER create or maintain combined files exceeding 500 lines (especially single HTML files containing CSS/JS). Proactively propose splitting them into independent CSS, JS, and HTML files.
-* **Mimar/İşçi Ayrımı (Planner/Worker split):** Planlama/Mimari tasarımı yapay zekanın en akıllı ve pahalı modeline (düşünme süresi açık şekilde) yaptırın. Kod yazma (Execution) aşamasını ise daha hızlı ve ucuz modellere (Gemini Flash, Claude Sonnet vb.) devredin.
+* **Mimar/İşçi Ayrımı (Planner/Worker split):** Planlama/Mimari tasarımı en akıllı modele (thinking açık) yaptırın; onay vermeden önce hızlı/ucuz modele geçin; kodlama (Execution) o hızlı modelde kalsın. Akıllı model plan + Handoff Özeti üretir, hızlı model sadece uygular — böylece pahalı modelin token maliyeti plan aşamasıyla sınırlı kalır.
 * **Grep/Targeted Reads (Hedef Odaklı Okuma):** Do not read massive files using full-file read tools. Use grep or line-range reads to only retrieve the exact lines you need.
 * **Minimal Diffs Only (Minimal Değişiklik):** Kod yazarken tüm dosyayı sıfırdan yazıp çıktı olarak vermeyin. Sadece değişecek satırları içeren minimal parça (diff/chunk) güncellemeleri yapın.
 * **Terminal Log Sıkıştırma (Compress Terminal Output):** Hata logları ve terminal çıktılarının tamamını bağlama (context) yüklemeyin. Sadece ilgili hata satırlarını (maksimum 50 satır) filtreleyerek okuyun.
 * **Sohbet Reset/Özet Protokolü (Sohbet Temizliği):** Monitor chat context length. When a chat goes beyond 10-15 steps or the estimated cost starts to rise, proactively remind the user to start a new chat (New Task), and provide a concise, copy-pasteable summary of the project state to paste into the new chat.
-* **Sekme Hijyeni (Antigravity IDE Tabs):** Remind the user to close unused Antigravity IDE tabs, as some agents automatically include all open tabs into the active context.
+* **Sekme Hijyeni (Editor Tab Hygiene):** Remind the user to close unused editor tabs, as some agents automatically include all open tabs into the active context.
 * **Excludes (Yoksayma Listeleri):** Keep `.clineignore`, `.cursorignore` and `.gitignore` updated to block unnecessary build assets, dependencies, and media from AI indexing.
 
 ### Dependency Protection

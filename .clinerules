@@ -1,13 +1,8 @@
-# Vibe Coding Project Rules (Cline / Roo Code)
+# Vibe Coding — Cline / Roo Code Köprüsü
 
-> Tüm evrensel kurallar `AGENTS.md` dosyasındadır. Bu dosya sadece yönlendirme yapar.
-> Ignore listesi: `.clineignore` dosyasına bakınız.
+> **Tüm kurallar `AGENTS.md` dosyasındadır — önce onu oku.**
+> Ignore listesi: `.clineignore`.
 
-## Quick Reference
-* **Environment:** Antigravity IDE (Antigravity 2.0).
-* **Language:** TURKISH (Türkçe) — friendly & non-technical.
-* **First Step:** Read `/memory-bank/` files and `AGENTS.md`.
-
-## Cline'a Özel
-* Cline'ın "Plan" ve "Act" modlarını kullan: İlk mesajda "Plan" modunda çalış, onay sonrası "Act"e geç.
-* `.clineignore` dosyasını güncel tut — Cline bu listeye göre dosyaları tarar.
+* **Dil:** TÜRKÇE — basit, jargonsuz. İlk adım: `/memory-bank/` + `AGENTS.md` oku.
+* **Cline'a özel:** "Plan" modunda planla, kullanıcı onayından sonra "Act" moduna geç.
+* **Model Handoff:** Planı akıllı modelle yap; plan sonunda "hızlı modele geç ve onay de" mesajını ver (`AGENTS.md` → Mimar/İşçi).

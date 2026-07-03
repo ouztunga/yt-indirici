@@ -113,7 +113,7 @@ Ajanların arka planda düzenli aralıklarla veya belirli bir süre sonra uyanı
 
 ### C. Artifacts (Eserler/Çıktılar) Sistemi
 Ajanlar, kullanıcıya doğrulanabilir çıktılar sunmak için Artifact mekanizmasını kullanır:
-*   [task.md](file:///c:/Users/ouztunga/Desktop/vibecoding/memory-bank/progress.md): Süreçteki TODO listesini ve durumları takip eder.
+*   `task.md`: Süreçteki TODO listesini ve durumları takip eder.
 *   `implementation_plan.md`: Kod yazılmadan önce mimari planın kullanıcı onayına sunulduğu taslaktır.
 *   `walkthrough.md`: Kod yazımı bittikten sonra nelerin değiştiğini, yapılan testleri ve varsa ekran görüntülerini barındıran kapanış raporudur.
 
@@ -122,6 +122,17 @@ Ajanlar, kullanıcıya doğrulanabilir çıktılar sunmak için Artifact mekaniz
 ## 💸 6. Token ve Maliyet Koruma Kuralları
 
 Antigravity 2.0'ın geniş bağlam (context) pencerelerini israf etmemek için ajan şu kurallara harfiyen uymalıdır:
+
+### A. Mimar → İşçi Model Handoff (En Büyük Tasarruf)
+Akıllı modeller (Gemini Pro, Claude Opus, thinking modları) plan ve mimari için idealdir ama **çok token harcar**. Uygulama akışı:
+
+1. **Mimar (akıllı model):** Phase 1 planını yaz → **"Hızlı modele geç ve onay de"** de → Handoff Özeti üret → **kod yazma, dur.**
+2. **Vibe Coder:** Antigravity model seçiciden hızlı modele geç (Flash, Sonnet, Composer Fast).
+3. **İşçi (hızlı model):** *"Plana göre onay, devam et"* ile Phase 2'yi uygula — planı baştan kurma.
+
+> **İpucu:** Aynı sohbette model değiştirmek genelde yeterli; plan zaten bağlamda. Uzun sohbetlerde Handoff Özetini yeni sohbete yapıştır.
+
+### B. Diğer Token Kuralları
 
 1.  **Sekme Hijyeni (Tab Hygiene):** Editörde açık olan gereksiz tüm sekmeleri kapatması için kullanıcı uyarılmalıdır. Çünkü açık sekmeler otomatik olarak ajanın bağlamına dahil edilerek token tüketimini artırır.
 2.  **Okuma Filtreleme (Grep & Target Reads):** Büyük dosyaların tamamı asla okunmamalıdır. Bunun yerine nokta atışı satır aralıkları (`view_file` ile `StartLine` ve `EndLine` kullanılarak) veya `grep_search` kullanılmalıdır.

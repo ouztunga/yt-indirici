@@ -59,3 +59,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.swp
+
+# Şablon güncelleme yedekleri
+.vibe-backup/
