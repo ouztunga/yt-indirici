@@ -16,10 +16,11 @@
 
 ## 🔄 Son Değişiklikler (Recent Changes)
 
-* **Yeniden Başlat (Restart) Donma Çözümü:**
-  * Konsol penceresiz GUI süreçlerinde `timeout` komutu desteklenmediği için anında `ERROR: Input redirection is not supported` hatası veriyor ve 0.001 saniyede yeni uygulamayı açıyordu.
-  * Bu durum WebView2 önbellek ve port kilitleri henüz serbest kalmadan yeni uygulamanın açılmasına ve "Yanıt vermiyor" kilitlenmesine yol açıyordu.
-  * `self.window.destroy()` ile WebView2 penceresi önce düzgünce kapatıldı ve `ping 127.0.0.1 -n 3` ile 2 saniyelik temiz bir bekleme süresi verilerek donma sorunu kalıcı olarak çözüldü.
+* **Arayüz (UI) Donma & "Yanıt Vermiyor" Çözümü:**
+  * Arka planda çalışan birden fazla thread'in (Playlist sorguları, İlerleme takibi) aynı anda `evaluate_js` çağırarak .NET WinForms arayüz işleyicisini kilitlediği (Thread Deadlock) tespit edildi.
+  * `indirici.py` içerisine `self._js_lock = threading.Lock()` eklendi ve tüm JavaScript çağrıları thread-safe hale getirildi.
+  * İndirme sırasındaki ilerleme güncellemeleri saniyede maksimum 10 güncelleme (10 FPS) olacak şekilde zaman kısıtlamasına (`_last_progress_time`) tabi tutuldu.
+  * `index.js` içerisindeki `autoAnalyze` fonksiyonuna `http://` / `https://` protokol kontrolü ve 1 saniye debounce eklenerek boş istek spam'ı engellendi.
 
 ---
 

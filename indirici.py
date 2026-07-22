@@ -1,8 +1,19 @@
+import ctypes
+import os
+import sys
+
+# Windows Çift Monitör (Multi-Monitor) ve DPI Farkındalığı (Kilitlenmeleri önler)
+try:
+    ctypes.windll.user32.SetProcessDpiAwarenessContext(-4)  # DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+except Exception:
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)      # PROCESS_PER_MONITOR_DPI_AWARE
+    except Exception:
+        pass
+
 import webview
 import yt_dlp
 import threading
-import os
-import sys
 import logging
 import traceback
 import base64
@@ -10,7 +21,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 
 os.environ['PYWEBVIEW_GUI'] = 'edgechromium'
-os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--disable-renderer-accessibility'
+os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--disable-renderer-accessibility --disable-features=LayoutNG'
 
 
 def resource_path(relative_path):
@@ -664,7 +675,8 @@ if __name__ == '__main__':
             js_api=api,
             width=1100,
             height=750,
-            resizable=False,
+            resizable=True,
+            min_size=(900, 600),
             background_color='#131313',
         )
         api.window = window     # API'ye pencere referansı ver
