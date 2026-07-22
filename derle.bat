@@ -21,4 +21,3 @@ if %errorlevel% equ 0 (
     echo HATA: Derleme sirasinda bir sorun olustu.
 )
 
-pause

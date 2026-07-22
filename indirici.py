@@ -59,14 +59,71 @@ class EliteApi:
         except Exception:
             pass
 
-    def _ydl_opts(self, **extra):
-        """Tüm yt-dlp çağrıları için ortak ayarlar."""
+    def _find_cookie_source(self):
+        """Öncelikle local cookies.txt var mı bak, yoksa tarayıcı çerezlerini tara."""
+        # 1. cookies.txt kontrolü (En kararlı yöntem)
+        possible_txts = [
+            os.path.join(self.base_path, 'cookies.txt'),
+            os.path.join(os.getcwd(), 'cookies.txt'),
+            os.path.join(os.path.expanduser("~"), "Downloads", "cookies.txt"),
+            os.path.join(os.path.expanduser("~"), "Desktop", "cookies.txt"),
+        ]
+        for txt in possible_txts:
+            if os.path.exists(txt) and os.path.getsize(txt) > 0:
+                return ('file', txt)
+
+        # 2. Mevcut tarayıcı çerezleri
+        local = os.environ.get('LOCALAPPDATA', '')
+        appdata = os.environ.get('APPDATA', '')
+
+        browsers = [
+            ('firefox', os.path.join(appdata, r'Mozilla\Firefox\Profiles')),
+            ('edge', os.path.join(local, r'Microsoft\Edge\User Data\Default\Network\Cookies')),
+            ('chrome', os.path.join(local, r'Google\Chrome\User Data\Default\Network\Cookies')),
+            ('brave', os.path.join(local, r'BraveSoftware\Brave-Browser\User Data\Default\Network\Cookies')),
+            ('opera', os.path.join(appdata, r'Opera Software\Opera Stable\Network\Cookies')),
+            ('vivaldi', os.path.join(local, r'Vivaldi\User Data\Default\Network\Cookies')),
+        ]
+
+        for name, cookie_path in browsers:
+            if os.path.exists(cookie_path):
+                return ('browser', name)
+
+        return (None, None)
+
+    def _ydl_opts(self, url="", force_browser=None, force_no_cookies=False, **extra):
+        """Tüm yt-dlp çağrıları için ortak ve optimize edilmiş ayarlar."""
         opts = {
             'quiet': True,
             'no_warnings': True,
             'check_formats': False,
             'nocheckcertificate': True,
+            'socket_timeout': 30,
+            'concurrent_fragment_downloads': 4,
+            'http_chunk_size': 10485760,  # 10MB chunk
+            'buffersize': 1024 * 1024,   # 1MB buffer
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+            },
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web']
+                }
+            }
         }
+
+        if not force_no_cookies:
+            if force_browser:
+                opts['cookiesfrombrowser'] = (force_browser, None, None, None)
+            else:
+                source_type, source_val = self._find_cookie_source()
+                if source_type == 'file':
+                    opts['cookiefile'] = source_val
+                elif source_type == 'browser' and url and any(d in url.lower() for d in ['instagram.com', 'tiktok.com', 'twitter.com', 'x.com']):
+                    opts['cookiesfrombrowser'] = (source_val, None, None, None)
+
         opts.update(extra)
         return opts
 
@@ -182,86 +239,118 @@ class EliteApi:
         threading.Thread(target=self._analyze_thread, args=(url,), daemon=True).start()
 
     def _analyze_thread(self, url):
-        try:
-            is_playlist = 'list=' in url
+        needs_cookies = any(d in url.lower() for d in ['instagram.com', 'tiktok.com', 'twitter.com', 'x.com'])
+        is_playlist = 'list=' in url
 
-            ydl_opts = self._ydl_opts(
-                noplaylist=not is_playlist,
-                extract_flat='in_playlist' if is_playlist else False,
-                lazy_playlist=True,
-            )
+        # Olası çerez seçeneklerini oluştur
+        attempts = []
+        source_type, source_val = self._find_cookie_source()
+        if source_type == 'file':
+            attempts.append({'type': 'file', 'val': source_val})
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                self.last_info = ydl.extract_info(url, download=False)
+        if needs_cookies:
+            for b in ['firefox', 'chrome', 'edge', 'brave', 'opera', 'vivaldi']:
+                attempts.append({'type': 'browser', 'val': b})
 
-            title = self.last_info.get('title', 'Bilinmeyen Video')
+        attempts.append({'type': 'none', 'val': None})
 
-            # Thumbnail bulma
-            thumb = self.last_info.get('thumbnail', '')
-            if not thumb and is_playlist:
-                entries = self.last_info.get('entries', [])
-                if entries and entries[0]:
-                    thumb = entries[0].get('thumbnail', '')
+        last_error = None
+        for attempt in attempts:
+            try:
+                if attempt['type'] == 'file':
+                    ydl_opts = self._ydl_opts(url=url, noplaylist=not is_playlist, extract_flat='in_playlist' if is_playlist else False, lazy_playlist=True)
+                elif attempt['type'] == 'browser':
+                    ydl_opts = self._ydl_opts(url=url, force_browser=attempt['val'], noplaylist=not is_playlist, extract_flat='in_playlist' if is_playlist else False, lazy_playlist=True)
+                else:
+                    ydl_opts = self._ydl_opts(url=url, force_no_cookies=True, noplaylist=not is_playlist, extract_flat='in_playlist' if is_playlist else False, lazy_playlist=True)
 
-            # Playlist / tekil video ayrımı
-            playlist_entries = []
-            max_height = 1080
-            all_sizes = {}
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    self.last_info = ydl.extract_info(url, download=False)
 
-            if is_playlist:
-                raw = self.last_info.get('entries', [])
-                for entry in raw:
-                    if not entry:
-                        continue
-                    playlist_entries.append({
-                        'id': entry.get('id'),
-                        'title': entry.get('title', 'Bilinmeyen Video'),
-                        'duration': entry.get('duration'),
-                    })
+                # Başarılı — sonucu işle
+                title = self.last_info.get('title', 'Bilinmeyen Video')
 
-                # İlk videonun formatlarından max yükseklik tespit et
-                if playlist_entries and playlist_entries[0].get('id'):
-                    try:
-                        first_url = f"https://www.youtube.com/watch?v={playlist_entries[0]['id']}"
-                        with yt_dlp.YoutubeDL(self._ydl_opts()) as ydl2:
-                            first_info = ydl2.extract_info(first_url, download=False)
-                            heights = [f.get('height') for f in first_info.get('formats', []) if f.get('height')]
-                            if heights:
-                                max_height = max(heights)
-                    except Exception as e:
-                        logging.error(f"Playlist ilk video analiz hatası: {e}")
+                # Thumbnail bulma
+                thumb = self.last_info.get('thumbnail', '')
+                if not thumb and is_playlist:
+                    entries = self.last_info.get('entries', [])
+                    if entries and entries[0]:
+                        thumb = entries[0].get('thumbnail', '')
 
-                count = len(playlist_entries)
-                all_sizes = {"audio": f"Playlist: {count} Ses"}
-                for q in ("360", "480", "720", "1080", "1440", "2160", "4320"):
-                    all_sizes[q] = f"Playlist: {count} Video"
+                # Playlist / tekil video ayrımı
+                playlist_entries = []
+                max_height = 1080
+                all_sizes = {}
 
-            else:
-                formats = self.last_info.get('formats', [])
-                heights = [f.get('height') for f in formats if f.get('height')]
-                if heights:
-                    max_height = max(heights)
-                all_sizes = self._calc_all_sizes(self.last_info)
+                if is_playlist:
+                    raw = self.last_info.get('entries', [])
+                    for entry in raw:
+                        if not entry:
+                            continue
+                        playlist_entries.append({
+                            'id': entry.get('id'),
+                            'title': entry.get('title', 'Bilinmeyen Video'),
+                            'duration': entry.get('duration'),
+                            'url': entry.get('url'),
+                            'webpage_url': entry.get('webpage_url'),
+                            'thumbnail': entry.get('thumbnail'),
+                        })
 
-            # Frontend'e gönder
-            self._js(
-                f"updateUI({json.dumps(title)}, {json.dumps(thumb)}, "
-                f"{json.dumps(all_sizes)}, {json.dumps(url)}, "
-                f"{json.dumps(playlist_entries)}, {max_height})"
-            )
-            self._js(f"updateProgress(0, {json.dumps('✅ Video analiz edildi. İndirmeye hazır.')})")
+                    # İlk videonun formatlarından max yükseklik tespit et
+                    if playlist_entries and playlist_entries[0].get('id'):
+                        try:
+                            first_url = playlist_entries[0].get('url') or playlist_entries[0].get('webpage_url') or f"https://www.youtube.com/watch?v={playlist_entries[0]['id']}"
+                            with yt_dlp.YoutubeDL(self._ydl_opts(url=first_url)) as ydl2:
+                                first_info = ydl2.extract_info(first_url, download=False)
+                                heights = [f.get('height') for f in first_info.get('formats', []) if f.get('height')]
+                                if heights:
+                                    max_height = max(heights)
+                        except Exception as e:
+                            logging.error(f"Playlist ilk video analiz hatası: {e}")
 
-            # Playlist ise arka planda detay çek
-            if is_playlist and playlist_entries:
-                threading.Thread(
-                    target=self._bg_playlist_details,
-                    args=(playlist_entries,),
-                    daemon=True,
-                ).start()
+                    count = len(playlist_entries)
+                    all_sizes = {"audio": f"Playlist: {count} Ses"}
+                    for q in ("360", "480", "720", "1080", "1440", "2160", "4320"):
+                        all_sizes[q] = f"Playlist: {count} Video"
 
-        except Exception as e:
-            logging.error(f"Analiz hatası: {e}\n{traceback.format_exc()}")
-            self._js(f"updateProgress(0, {json.dumps('❌ Hata: Video bulunamadı veya link geçersiz!')})")
+                else:
+                    formats = self.last_info.get('formats', [])
+                    heights = [f.get('height') for f in formats if f.get('height')]
+                    if heights:
+                        max_height = max(heights)
+                    all_sizes = self._calc_all_sizes(self.last_info)
+
+                # Frontend'e gönder
+                self._js(
+                    f"updateUI({json.dumps(title)}, {json.dumps(thumb)}, "
+                    f"{json.dumps(all_sizes)}, {json.dumps(url)}, "
+                    f"{json.dumps(playlist_entries)}, {max_height})"
+                )
+                self._js(f"updateProgress(0, {json.dumps('✅ Video analiz edildi. İndirmeye hazır.')})")
+
+                # Playlist ise arka planda detay çek
+                if is_playlist and playlist_entries:
+                    threading.Thread(
+                        target=self._bg_playlist_details,
+                        args=(playlist_entries,),
+                        daemon=True,
+                    ).start()
+
+                return  # Başarılı — çık
+
+            except Exception as e:
+                last_error = e
+                logging.error(f"Analiz denemesi ({attempt}) başarısız: {e}")
+                # Sonraki denemeye geç
+                continue
+
+        # Tüm denemeler başarısız
+        err_msg = str(last_error) if last_error else ""
+        if needs_cookies and ("empty media" in err_msg or "login" in err_msg.lower() or "DPAPI" in err_msg or "Cookie" in err_msg):
+            msg = "❌ Instagram videosu indirilemedi. Çözüm: Uygulama klasörüne 'cookies.txt' dosyası ekleyin veya açık tarayıcıları kapatın."
+        else:
+            msg = "❌ Hata: Video bulunamadı veya link geçersiz!"
+        self._js(f"updateProgress(0, {json.dumps(msg)})")
 
     # ─── Playlist arka plan detayları ─────────────────────────
 
@@ -278,8 +367,8 @@ class EliteApi:
             qualities = ("audio", "360", "480", "720", "1080", "1440", "2160", "4320")
 
             try:
-                video_url = f"https://www.youtube.com/watch?v={video_id}"
-                with yt_dlp.YoutubeDL(self._ydl_opts()) as ydl:
+                video_url = entry.get('url') or entry.get('webpage_url') or f"https://www.youtube.com/watch?v={video_id}"
+                with yt_dlp.YoutubeDL(self._ydl_opts(url=video_url)) as ydl:
                     info = ydl.extract_info(video_url, download=False)
                     if info:
                         sizes = self._calc_all_sizes(info)
@@ -357,7 +446,7 @@ class EliteApi:
         is_playlist = 'list=' in url
         if is_playlist:
             try:
-                with yt_dlp.YoutubeDL(self._ydl_opts(extract_flat=True)) as ydl:
+                with yt_dlp.YoutubeDL(self._ydl_opts(url=url, extract_flat=True)) as ydl:
                     pl_info = ydl.extract_info(url, download=False)
                     pl_title = pl_info.get('title', 'Playlist')
                     # Geçersiz dosya adı karakterlerini temizle
@@ -369,6 +458,7 @@ class EliteApi:
                 logging.error(f"Playlist klasör hatası: {e}")
 
         ydl_opts = self._ydl_opts(
+            url=url,
             outtmpl=os.path.join(path, '%(title)s.%(ext)s'),
             progress_hooks=[self._progress_hook],
             ffmpeg_location=ffmpeg_path,
@@ -544,6 +634,16 @@ if __name__ == '__main__':
             html_content = html_content.replace('src="logo.png"', f'src="{logo_data}"')
             html_content = html_content.replace('let LOGO_DATA = "";', f'let LOGO_DATA = "{logo_data}";')
 
+        # Başlangıç değerlerini enjekte et (Pywebview on_loaded kilidini önlemek için)
+        safe_path = api.download_path.replace("\\", "/")
+        html_content = html_content.replace('>/Downloads/<', f'>{safe_path}<')
+        
+        if not os.path.exists(os.path.join(api.base_path, "ffmpeg.exe")):
+            html_content = html_content.replace(
+                'Sistem Durumu: Çalışıyor',
+                '⚠️ UYARI: ffmpeg.exe bulunamadı! İndirmeler çalışmayabilir.'
+            )
+
         # Pencere oluştur
         window = webview.create_window(
             title='İndirici v1.3.0',
@@ -556,17 +656,6 @@ if __name__ == '__main__':
         )
         api.window = window     # API'ye pencere referansı ver
 
-        def on_loaded():
-            safe = api.download_path.replace("\\", "/")
-            api._js(f"document.getElementById('pathDisplay').innerText = {json.dumps(safe)}")
-            # ffmpeg kontrolü
-            if not os.path.exists(os.path.join(api.base_path, "ffmpeg.exe")):
-                api._js(
-                    "document.getElementById('statusText').innerText = "
-                    "'⚠️ UYARI: ffmpeg.exe bulunamadı! İndirmeler çalışmayabilir.'"
-                )
-
-        window.events.loaded += on_loaded
         webview.start(gui='edgechromium', debug=False)
 
     except Exception as e:

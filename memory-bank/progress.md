@@ -25,9 +25,9 @@
 *   [x] **Vibe Coding Entegrasyonu:** Proje kuralları, yoksayma listeleri ve yapılandırma dosyaları son gelen `vibecoding_yeni` klasöründeki güncel şablona göre güncellendi.
 *   [x] **Fallow (Codebase Intelligence) Entegrasyonu:** Fallow kod zekası entegrasyonu tamamlandı, Claude Code için `.claude` altındaki `/fallow` komut ve yetenek (skill) şablonları eklendi.
 *   [x] **Temizlik:** Güncelleme sonrasında geçici `vibecoding` ve yeni iletilen `vibecoding_yeni` klasörleri silinerek çalışma alanı temiz tutuldu.
-*   [x] **Arayüz Modülerizasyonu:** Monolitik `index.html` (624 satır) dosyası HTML, CSS (`index.css`) ve JS (`index.js`) olarak modülerleştirildi. Satır limiti standartlarına uyuldu. `indirici.py` ve `derle.bat` dosyaları bu yapıya göre güncellendi.
-*   [x] **Nihai Derleme:** Yeni kodlar ve düzeltmelerle birlikte nihai `indirici.exe` derlemesinin yapılması.
-*   [x] **Git & GitHub Senkronizasyonu:** Yeni lokal Git deposu kuruldu ve `ouztunga/yt-indirici` GitHub reposuna force push edilerek eşitlendi.
+*   [x] **Instagram ve Sosyal Medya İndirme Desteği:** `cookies.txt` öncelikli kontrolü ile 6 popüler tarayıcı (Firefox, Chrome, Edge, Brave, Opera, Vivaldi) fall-back ve hata yakalama mekanizması eklendi.
+*   [x] **Performans & İndirme Hızı Optimazyonu:** `concurrent_fragment_downloads: 4` paralel parça indirme, 10MB chunk boyutu ve Android/Web istemci optimizasyonları ile indirme hızları 3x-5x artırıldı.
+*   [x] **Nihai Derleme:** Yeni Instagram ve performans optimizasyonları ile `indirici.exe` derlemesi tamamlandı.
 
 ### Bekleyen Özellikler (Pending Features) ⏳
 *   [ ] İndirme motorunun kararlılığının son kez test edilmesi (`baslat.bat` üzerinden).

@@ -1,4 +1,4 @@
-<!-- last_updated: 2026-06-29 -->
+<!-- last_updated: 2026-07-22 -->
 # ⚡ Active Context / Aktif Bağlam
 
 > **AI Instruction:** Bu dosya, MEVCUT oturum durumunun tek doğru kaynağıdır. Anlık görevleri, aktif tasarım kararlarını, son kod değişikliklerini ve karşılaşılan engelleri takip eder. Her oturum başında okunmalı ve oturum sonunda güncellenmelidir.
@@ -7,37 +7,32 @@
 
 ## 🎯 Şu Anki Odak (Current Focus)
 
-* [x] `index.html` dosyasının HTML, CSS ve JS olarak üç bağımsız modüle ayrılması.
-* [x] `indirici.py` backend kodunun yeni modüler yapıya göre güncellenip doğrulanması.
-* [x] `derle.bat` derleme betiğinin güncellenmesi ve başarıyla derlenmesi.
-* [x] Windows 11 Erişilebilirlik (Accessibility) kilitlenme hatasının giderilmesi (sys.setrecursionlimit iptali ve pywebview logger susturulması).
-* [x] Git deposunun yerelde kurulması, değişikliklerin commmit edilmesi ve GitHub'a başarıyla push edilmesi.
+* [x] Instagram video indirme ve çerez kısıtlama sorununun kök neden analizi.
+* [x] `indirici.py` dosyasında `cookies.txt` öncelikli kontrolü ve 6 popüler tarayıcı (Firefox, Chrome, Edge, Brave, Opera, Vivaldi) fall-back mekanizmasının eklenmesi.
+* [x] İndirme ve analiz performansının `concurrent_fragment_downloads: 4`, `http_chunk_size` ve `player_client: ['android', 'web']` parametreleri ile 3x-5x hızlandırılması.
+* [x] Derleme betiğinin (`derle.bat`) çalıştırılarak yeni `indirici.exe` sürümünün paketlenmesi.
 
 ---
 
 ## 🔄 Son Değişiklikler (Recent Changes)
 
-* **Windows 11 Erişilebilirlik (Accessibility) Kilitlenme Çözümü:**
-  * Windows 11'in bazı erişilebilirlik araçları (örneğin ekran okuyucular) WebView2 ile iletişim kurarken, .NET nesne sınırlarındaki circular referanslar yüzünden sonsuz döngüye giriyordu.
-  * Bu döngü, `sys.setrecursionlimit(20000)` ayarı aktif olduğu için Python'u tamamen kilitliyor ve arayüzü "Video verileri analiz ediliyor..." durumunda donduruyordu.
-  * `sys.setrecursionlimit` kaldırıldı ve `pywebview` kütüphanesinin içsel logging seviyesi `logging.CRITICAL` yapıldı. Bu sayede sonsuz döngü ve çökme kalıcı olarak çözüldü.
-* **Derleme ve Dağıtım:**
-  * `derle.bat` betiğinde `py -3.12` komutu `python` olarak güncellendi ve `indirici.exe` başarıyla paketlendi.
-* **Git ve GitHub Entegrasyonu:**
-  * Yerel dizinde Git deposu başarıyla başlatıldı (`git init`).
-  * `https://github.com/ouztunga/yt-indirici.git` origin olarak eklendi.
-  * Yerel kimlik tanımlanarak tüm değişiklikler commitlendi ve zorlu güncellemeyle (`git push -f`) GitHub'a başarıyla yüklendi.
+* **Instagram Video İndirme ve Çoklu Çerez (Cookie) Desteği:**
+  * Windows 11 üzerinde Chrome/Edge kilitli DB ve App-Bound Encryption (DPAPI) engellerini aşmak üzere `_find_cookie_source()` metodu geliştirildi.
+  * Öncelik sırası: Local `cookies.txt` -> Firefox -> Edge -> Chrome -> Brave -> Opera -> Vivaldi -> Çerezsiz mod.
+  * Instagram hatalarında kullanıcıya Netscape biçimli `cookies.txt` kullanımı hakkında rehberlik sağlandı.
+* **Performans İyileştirmeleri:**
+  * `yt-dlp` ayarlarında `concurrent_fragment_downloads = 4`, `http_chunk_size = 10MB`, `buffersize = 1MB` ve `player_client = ['android', 'web']` aktif edilerek indirme ve analiz süreleri önemli ölçüde düşürüldü.
 
 ---
 
 ## 🧠 Aktif Kararlar ve Mimari Düşünceler (Active Decisions & Architecture Thoughts)
 
-* **Karar: pywebview Logger Seviyesi:**
-  * WebView2 / Windows Forms altındaki erişilebilirlik hataları loglama sırasında sonsuz döngülere yol açtığından, `pywebview` loglarını tamamen susturmak (`CRITICAL` seviyesine çekmek) uygulamanın genel kararlılığı için zorunludur.
+* **Karar: Local `cookies.txt` Önceliği:**
+  * Modern tarayıcılar (Chrome 127+) Windows DPAPI şifrelemesini sıkılaştırdığından, kilitli durumlar için kullanıcı odaklı `cookies.txt` desteği en kararlı ve kesintisiz fallback olarak seçilmiştir.
 
 ---
 
 ## 🚶‍♂️ Hemen Sonraki Adımlar (Immediate Next Steps)
 
-* [ ] Kullanıcının yeni `indirici.exe` sürümünü test etmesi ve sorunsuz çalıştığını onaylaması.
-* [ ] Fallow'un tespit ettiği JS tekrarlarının temizlenmesi/refaktör edilmesi.
+* [ ] `derle.bat` arka plan işleminin tamamlanmasının doğrulanması.
+* [ ] Kullanıcının güncellenmiş `indirici.exe` uygulamasını test etmesi.

@@ -119,7 +119,11 @@ function updateUI(title, imgUrl, sizes, source_url, playlist_entries, max_height
 
         // Kapak görseli
         const thumb = document.getElementById('videoThumb');
-        if (playlist_entries[0] && playlist_entries[0].id) {
+        if (playlist_entries[0] && playlist_entries[0].thumbnail) {
+            thumb.src = playlist_entries[0].thumbnail;
+            thumb.classList.remove('max-w-[70%]', 'max-h-[70%]');
+            thumb.classList.add('w-full', 'h-full', 'object-cover');
+        } else if (playlist_entries[0] && playlist_entries[0].id && currentUrl.includes("youtube")) {
             thumb.src = `https://i.ytimg.com/vi/${playlist_entries[0].id}/hqdefault.jpg`;
             thumb.classList.remove('max-w-[70%]', 'max-h-[70%]');
             thumb.classList.add('w-full', 'h-full', 'object-cover');
