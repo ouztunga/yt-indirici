@@ -432,11 +432,29 @@ class EliteApi:
             logging.error(f"Klasör seçme hatası: {e}\n{traceback.format_exc()}")
             return None
 
+    def _parse_time_str(self, time_str):
+        """'0:03', '00:03', '3', '1:15', '01:15:30' gibi metinleri saniyeye dönüştürür."""
+        if not time_str or not time_str.strip():
+            return None
+        time_str = time_str.strip()
+        try:
+            if ':' in time_str:
+                parts = time_str.split(':')
+                if len(parts) == 2:
+                    mins, secs = parts
+                    return float(mins) * 60 + float(secs)
+                elif len(parts) == 3:
+                    hrs, mins, secs = parts
+                    return float(hrs) * 3600 + float(mins) * 60 + float(secs)
+            return float(time_str)
+        except Exception:
+            return None
+
     # ═══════════════════════════════════════════════════════════
     #  API: İNDİRME
     # ═══════════════════════════════════════════════════════════
 
-    def download(self, url, quality, path=None, format_type="mp4"):
+    def download(self, url, quality, path=None, format_type="mp4", start_time="", end_time=""):
         if not url:
             return
         if not path or not path.strip():
@@ -445,11 +463,11 @@ class EliteApi:
         self.pause_event.set()
         threading.Thread(
             target=self._download_thread,
-            args=(url, quality, path),
+            args=(url, quality, path, start_time, end_time),
             daemon=True,
         ).start()
 
-    def _download_thread(self, url, quality, path):
+    def _download_thread(self, url, quality, path, start_time="", end_time=""):
         ffmpeg_path = os.path.join(self.base_path, "ffmpeg.exe")
 
         # Playlist ise alt klasör oluştur
@@ -467,11 +485,22 @@ class EliteApi:
             except Exception as e:
                 logging.error(f"Playlist klasör hatası: {e}")
 
-        # Çözünürlük etiketli dosya adı şablonu (Çakışmaları ve indirme atlamalarını önler)
+        # Zaman aralığı kesme hesaplama
+        start_sec = self._parse_time_str(start_time)
+        end_sec = self._parse_time_str(end_time)
+        has_trim = start_sec is not None or end_sec is not None
+
+        trim_tag = ""
+        if has_trim:
+            s_label = f"{int(start_sec)}s" if start_sec is not None else "0s"
+            e_label = f"{int(end_sec)}s" if end_sec is not None else "son"
+            trim_tag = f" [{s_label}-{e_label}]"
+
+        # Çözünürlük ve kesme etiketli dosya adı şablonu
         if quality == "audio":
-            filename_tmpl = '%(title)s [MP3].%(ext)s'
+            filename_tmpl = f'%(title)s{trim_tag} [MP3].%(ext)s'
         else:
-            filename_tmpl = f'%(title)s [{quality}p].%(ext)s'
+            filename_tmpl = f'%(title)s{trim_tag} [{quality}p].%(ext)s'
 
         ydl_opts = self._ydl_opts(
             url=url,
@@ -484,6 +513,13 @@ class EliteApi:
             lazy_playlist=True,
             ignoreerrors=True,
         )
+
+        if has_trim:
+            from yt_dlp.utils import download_range_func
+            s_val = start_sec if start_sec is not None else 0
+            e_val = end_sec if end_sec is not None else float('inf')
+            ydl_opts['download_ranges'] = download_range_func(None, [(s_val, e_val)])
+            ydl_opts['force_keyframes_at_cuts'] = True
 
         if quality == "audio":
             ydl_opts.update({

@@ -208,11 +208,33 @@ function resetUI(force) {
     document.getElementById('activeControls').classList.add('hidden');
     document.getElementById('pauseIcon').innerText = "pause";
     document.getElementById('pauseText').innerText = "DURAKLAT";
+    
+    // Kesme alanlarını sıfırla
+    if (document.getElementById('trimStartInput')) document.getElementById('trimStartInput').value = "";
+    if (document.getElementById('trimEndInput')) document.getElementById('trimEndInput').value = "";
+    if (document.getElementById('trimInputsContainer')) document.getElementById('trimInputsContainer').classList.add('hidden');
+    if (document.getElementById('trimToggleBtn')) document.getElementById('trimToggleBtn').innerText = "+ Kesme Ekle";
 }
 
 // ═══════════════════════════════════════════════════════════
-//  İNDİRME KONTROLLERİ
+//  İNDİRME VE KESME KONTROLLERİ
 // ═══════════════════════════════════════════════════════════
+
+function toggleTrimInputs() {
+    const container = document.getElementById('trimInputsContainer');
+    const btn = document.getElementById('trimToggleBtn');
+    if (!container || !btn) return;
+
+    if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        btn.innerText = "- Temizle / Kapat";
+    } else {
+        container.classList.add('hidden');
+        document.getElementById('trimStartInput').value = "";
+        document.getElementById('trimEndInput').value = "";
+        btn.innerText = "+ Kesme Ekle";
+    }
+}
 
 function browseFolder() {
     pywebview.api.browse();
@@ -223,12 +245,15 @@ function startDownload() {
     const path = document.getElementById('pathDisplay').innerText;
     if (!url) return;
 
+    const startTime = document.getElementById('trimStartInput')?.value?.trim() || "";
+    const endTime = document.getElementById('trimEndInput')?.value?.trim() || "";
+
     isDownloading = true;
     document.getElementById('startBtn').classList.add('hidden');
     document.getElementById('activeControls').classList.remove('hidden');
     document.getElementById('statusText').innerText = "İndirme motoru başlatılıyor...";
 
-    pywebview.api.download(url, currentQuality, path, currentFormat);
+    pywebview.api.download(url, currentQuality, path, currentFormat, startTime, endTime);
 }
 
 async function togglePause() {

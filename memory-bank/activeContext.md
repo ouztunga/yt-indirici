@@ -16,10 +16,10 @@
 
 ## 🔄 Son Değişiklikler (Recent Changes)
 
-* **Çift Monitör (Multi-Monitor) Sürükleme Donma Çözümü:**
-  * Farklı DPI ölçeklendirmesine sahip 1. ve 2. monitörler arasında pencere sürüklendiğinde, `resizable=False` kısıtlaması nedeniyle Windows DPI yöneticisi ile WinForms EdgeChromium renderer arasında sonsuz `WM_DPICHANGED` döngüsü yaşandığı tespit edildi.
-  * `indirici.py` en üstüne Windows **Per-Monitor V2 DPI Awareness** (`SetProcessDpiAwarenessContext(-4)`) eklendi.
-  * Pencere `resizable=True, min_size=(900, 600)` yapılarak iki monitör arasında taşınırken DPI boyut güncellemelerinin akıcı ve donmasız yapılması sağlandı.
+* **Farklı Çözünürlük İndirmelerinin Atlanmama Çözümü:**
+  * Aynı video önce 720p sonra 1080p indirilmek istendiğinde, dosya adları aynı (`Video.mp4`) olduğu için `yt-dlp`'nin önceden inmiş dosyayı tespit edip 1080p indirmeyi atladığı görüldü.
+  * `indirici.py` içerisindeki `outtmpl` şablonuna çözünürlük etiketi eklendi (`%(title)s [1080p].mp4`, `%(title)s [720p].mp4`, `%(title)s [MP3].mp3`).
+  * `overwrites=True` eklendi, böylece aynı çözünürlük tekrar indirilmek istendiğinde de indirme sorunsuz gerçekleşir.
 
 ---
 

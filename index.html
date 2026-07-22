@@ -106,6 +106,28 @@
             </div>
         </div>
 
+        <div class="mb-4">
+            <div class="flex items-center justify-between mb-2">
+                <label class="text-[11px] text-gray-400 uppercase tracking-wider flex items-center gap-1 font-semibold">
+                    <span class="material-symbols-outlined text-sm text-primary">content_cut</span>
+                    <span>ZAMAN ARALIĞI KESME (İSTEĞE BAĞLI)</span>
+                </label>
+                <button onclick="toggleTrimInputs()" id="trimToggleBtn" class="text-[11px] text-primary hover:underline font-semibold cursor-pointer">
+                    + Kesme Ekle
+                </button>
+            </div>
+            <div id="trimInputsContainer" class="hidden grid grid-cols-2 gap-3 bg-[#0e0e0e] p-3 rounded-lg border border-[#464554] transition-all">
+                <div>
+                    <label class="text-[10px] text-gray-400 block mb-1">BAŞLANGIÇ (Örn: 0:03 veya 3)</label>
+                    <input id="trimStartInput" type="text" placeholder="00:00" class="w-full bg-[#1c1c1c] border border-white/10 rounded px-3 py-1.5 text-xs text-white outline-none focus:border-[#c0c1ff] transition-all"/>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 block mb-1">BİTİŞ (Örn: 0:10 veya 10)</label>
+                    <input id="trimEndInput" type="text" placeholder="00:00" class="w-full bg-[#1c1c1c] border border-white/10 rounded px-3 py-1.5 text-xs text-white outline-none focus:border-[#c0c1ff] transition-all"/>
+                </div>
+            </div>
+        </div>
+
         <div class="mb-auto">
             <label class="text-xs text-gray-400 uppercase block mb-3 tracking-wider">İNDİRME KONUMU</label>
             <div class="flex gap-2">
