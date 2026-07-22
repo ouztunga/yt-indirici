@@ -16,11 +16,10 @@
 
 ## 🔄 Son Değişiklikler (Recent Changes)
 
-* **Arayüz (UI) Donma & "Yanıt Vermiyor" Çözümü:**
-  * Arka planda çalışan birden fazla thread'in (Playlist sorguları, İlerleme takibi) aynı anda `evaluate_js` çağırarak .NET WinForms arayüz işleyicisini kilitlediği (Thread Deadlock) tespit edildi.
-  * `indirici.py` içerisine `self._js_lock = threading.Lock()` eklendi ve tüm JavaScript çağrıları thread-safe hale getirildi.
-  * İndirme sırasındaki ilerleme güncellemeleri saniyede maksimum 10 güncelleme (10 FPS) olacak şekilde zaman kısıtlamasına (`_last_progress_time`) tabi tutuldu.
-  * `index.js` içerisindeki `autoAnalyze` fonksiyonuna `http://` / `https://` protokol kontrolü ve 1 saniye debounce eklenerek boş istek spam'ı engellendi.
+* **Çift Monitör (Multi-Monitor) Sürükleme Donma Çözümü:**
+  * Farklı DPI ölçeklendirmesine sahip 1. ve 2. monitörler arasında pencere sürüklendiğinde, `resizable=False` kısıtlaması nedeniyle Windows DPI yöneticisi ile WinForms EdgeChromium renderer arasında sonsuz `WM_DPICHANGED` döngüsü yaşandığı tespit edildi.
+  * `indirici.py` en üstüne Windows **Per-Monitor V2 DPI Awareness** (`SetProcessDpiAwarenessContext(-4)`) eklendi.
+  * Pencere `resizable=True, min_size=(900, 600)` yapılarak iki monitör arasında taşınırken DPI boyut güncellemelerinin akıcı ve donmasız yapılması sağlandı.
 
 ---
 

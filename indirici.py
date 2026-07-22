@@ -467,12 +467,19 @@ class EliteApi:
             except Exception as e:
                 logging.error(f"Playlist klasör hatası: {e}")
 
+        # Çözünürlük etiketli dosya adı şablonu (Çakışmaları ve indirme atlamalarını önler)
+        if quality == "audio":
+            filename_tmpl = '%(title)s [MP3].%(ext)s'
+        else:
+            filename_tmpl = f'%(title)s [{quality}p].%(ext)s'
+
         ydl_opts = self._ydl_opts(
             url=url,
-            outtmpl=os.path.join(path, '%(title)s.%(ext)s'),
+            outtmpl=os.path.join(path, filename_tmpl),
             progress_hooks=[self._progress_hook],
             ffmpeg_location=ffmpeg_path,
             continuedl=True,
+            overwrites=True,
             noplaylist=not is_playlist,
             lazy_playlist=True,
             ignoreerrors=True,
