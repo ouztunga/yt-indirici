@@ -16,12 +16,8 @@
 
 ## 🔄 Son Değişiklikler (Recent Changes)
 
-* **Instagram Video İndirme ve Çoklu Çerez (Cookie) Desteği:**
-  * Windows 11 üzerinde Chrome/Edge kilitli DB ve App-Bound Encryption (DPAPI) engellerini aşmak üzere `_find_cookie_source()` metodu geliştirildi.
-  * Öncelik sırası: Local `cookies.txt` -> Firefox -> Edge -> Chrome -> Brave -> Opera -> Vivaldi -> Çerezsiz mod.
-  * Instagram hatalarında kullanıcıya Netscape biçimli `cookies.txt` kullanımı hakkında rehberlik sağlandı.
-* **Performans İyileştirmeleri:**
-  * `yt-dlp` ayarlarında `concurrent_fragment_downloads = 4`, `http_chunk_size = 10MB`, `buffersize = 1MB` ve `player_client = ['android', 'web']` aktif edilerek indirme ve analiz süreleri önemli ölçüde düşürüldü.
+* **YouTube 1080p / High-Res Kısıtlama Çözümü:**
+  * YouTube'daki 1080p/4K videoların uygulamada 360p olarak görünmesine neden olan `player_client: ['android', 'web']` parametre zorlaması tespit edildi. Android istemcisi mobil akışlarda kaliteyi 360p ile sınırlandırdığından kısıtlama kaldırıldı ve 1080p / 4K / 8K tüm çözünürlükler eksiksiz aktif edildi.
 
 ---
 
