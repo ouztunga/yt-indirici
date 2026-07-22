@@ -569,16 +569,23 @@ class EliteApi:
 
     def restart_app(self):
         import subprocess
+        if self.window:
+            try:
+                self.window.destroy()
+            except Exception:
+                pass
+
         if getattr(sys, 'frozen', False):
             exe = sys.executable
-            cmd = f'cmd /c "timeout /t 1 /nobreak >nul & start "" "{exe}""'
+            cmd = f'cmd /c "ping 127.0.0.1 -n 3 >nul & start "" "{exe}""'
         else:
             bat = os.path.join(self.base_path, "baslat.bat")
             if os.path.exists(bat):
-                cmd = f'cmd /c "timeout /t 1 /nobreak >nul & start "" "{bat}""'
+                cmd = f'cmd /c "ping 127.0.0.1 -n 3 >nul & start "" "{bat}""'
             else:
                 py = os.path.abspath(sys.argv[0])
-                cmd = f'cmd /c "timeout /t 1 /nobreak >nul & start "" python "{py}""'
+                cmd = f'cmd /c "ping 127.0.0.1 -n 3 >nul & start "" python "{py}""'
+
         subprocess.Popen(cmd, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
         os._exit(0)
 
