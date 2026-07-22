@@ -37,6 +37,7 @@ class EliteApi:
     """pywebview JS API — tüm backend mantığı burada."""
 
     def __init__(self):
+        import time
         self.base_path = os.path.dirname(os.path.realpath(
             sys.executable if getattr(sys, 'frozen', False) else __file__
         ))
@@ -46,16 +47,19 @@ class EliteApi:
         self.should_stop = False    # İndirme durdurma flag'i
         self.pause_event = threading.Event()
         self.pause_event.set()      # Başlangıçta duraklatılmamış
+        self._js_lock = threading.Lock()  # evaluate_js deadlock kilidi
+        self._last_progress_time = 0      # UI throttling zaman damgası
 
     # ═══════════════════════════════════════════════════════════
     #  YARDIMCI METOTLAR
     # ═══════════════════════════════════════════════════════════
 
     def _js(self, code):
-        """Thread-safe evaluate_js wrapper."""
+        """Thread-safe evaluate_js wrapper (Deadlock korumalı)."""
         try:
             if self.window:
-                self.window.evaluate_js(code)
+                with self._js_lock:
+                    self.window.evaluate_js(code)
         except Exception:
             pass
 
@@ -515,6 +519,13 @@ class EliteApi:
                 return
 
             percent = (downloaded / total) * 100
+
+            # Saniyede maksimum 10 kez UI güncelle (Arayüz kilitlenmelerini önler)
+            import time
+            now = time.time()
+            if now - self._last_progress_time < 0.1 and percent < 100:
+                return
+            self._last_progress_time = now
 
             # Hız
             speed = d.get('speed') or 0

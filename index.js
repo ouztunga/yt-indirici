@@ -20,7 +20,7 @@ function autoAnalyze(url) {
         resetUI();
         return;
     }
-    if (url.length < 5) return;
+    if (url.length < 8 || (!url.startsWith('http://') && !url.startsWith('https://'))) return;
 
     currentUrl = url;
     document.getElementById('statusText').innerText = "Video verileri analiz ediliyor...";
@@ -50,8 +50,10 @@ function autoAnalyze(url) {
 
     analyzeTimeout = setTimeout(() => {
         document.getElementById('inputLoader').classList.remove('hidden');
-        pywebview.api.analyze(url, currentQuality);
-    }, 800);
+        if (window.pywebview && window.pywebview.api) {
+            pywebview.api.analyze(url, currentQuality);
+        }
+    }, 1000);
 }
 
 // ═══════════════════════════════════════════════════════════

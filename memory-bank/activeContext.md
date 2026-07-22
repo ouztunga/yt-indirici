@@ -16,8 +16,10 @@
 
 ## 🔄 Son Değişiklikler (Recent Changes)
 
-* **YouTube 1080p / High-Res Kısıtlama Çözümü:**
-  * YouTube'daki 1080p/4K videoların uygulamada 360p olarak görünmesine neden olan `player_client: ['android', 'web']` parametre zorlaması tespit edildi. Android istemcisi mobil akışlarda kaliteyi 360p ile sınırlandırdığından kısıtlama kaldırıldı ve 1080p / 4K / 8K tüm çözünürlükler eksiksiz aktif edildi.
+* **Yeniden Başlat (Restart) Donma Çözümü:**
+  * Konsol penceresiz GUI süreçlerinde `timeout` komutu desteklenmediği için anında `ERROR: Input redirection is not supported` hatası veriyor ve 0.001 saniyede yeni uygulamayı açıyordu.
+  * Bu durum WebView2 önbellek ve port kilitleri henüz serbest kalmadan yeni uygulamanın açılmasına ve "Yanıt vermiyor" kilitlenmesine yol açıyordu.
+  * `self.window.destroy()` ile WebView2 penceresi önce düzgünce kapatıldı ve `ping 127.0.0.1 -n 3` ile 2 saniyelik temiz bir bekleme süresi verilerek donma sorunu kalıcı olarak çözüldü.
 
 ---
 
