@@ -55,7 +55,7 @@
                 <h2 data-i18n="control_center" class="text-xl font-bold text-white">Kontrol Merkezi</h2>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="pywebview.api.restart_app()" class="flex items-center gap-2 text-xs text-primary hover:text-white transition-colors bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
+                <button onclick="window.pywebview &amp;&amp; window.pywebview.api &amp;&amp; pywebview.api.restart_app()" class="flex items-center gap-2 text-xs text-primary hover:text-white transition-colors bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
                     <span class="material-symbols-outlined text-sm">restart_alt</span>
                     <span>Yeniden Başlat</span>
                 </button>
@@ -150,6 +150,15 @@
                 </button>
                 <button onclick="stopDownload()" class="bg-[#ffc0c0] text-[#a90000] px-6 py-4 rounded-xl font-bold text-base flex items-center justify-center gap-3 hover:opacity-90 transition">
                     <span class="material-symbols-outlined">stop</span> <span>DURDUR</span>
+                </button>
+            </div>
+            
+            <div id="finishControls" class="hidden flex gap-3">
+                <button onclick="openDownloadFolder()" class="flex-1 bg-[#2a2a2a] border border-[#464554] text-white py-4 rounded-xl font-bold text-base flex items-center justify-center gap-3 hover:bg-[#3a3a3a] transition shadow-lg">
+                    <span class="material-symbols-outlined">folder_open</span> <span>İNDİRİLEN KONUMU AÇ</span>
+                </button>
+                <button onclick="resetUI(true)" class="bg-[#c0c1ff] text-[#1000a9] px-6 py-4 rounded-xl font-bold text-base flex items-center justify-center gap-3 hover:opacity-90 transition shadow-lg">
+                    <span class="material-symbols-outlined">add</span> <span>YENİ İNDİRME</span>
                 </button>
             </div>
         </div>

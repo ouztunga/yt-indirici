@@ -1,5 +1,9 @@
 .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-.glass-card { background: rgba(30, 30, 30, 0.6); backdrop-filter: blur(12px); border: 1px solid #2D2D2D; }
+.glass-card { 
+    background: rgba(28, 28, 32, 0.95); 
+    border: 1px solid rgba(255, 255, 255, 0.07); 
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
 html, body { 
     background-color: #131313; 
     color: #e5e2e1; 

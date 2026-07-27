@@ -1,4 +1,4 @@
-<!-- last_updated: 2026-07-22 -->
+<!-- last_updated: 2026-07-27 -->
 # ⚡ Active Context / Aktif Bağlam
 
 > **AI Instruction:** Bu dosya, MEVCUT oturum durumunun tek doğru kaynağıdır. Anlık görevleri, aktif tasarım kararlarını, son kod değişikliklerini ve karşılaşılan engelleri takip eder. Her oturum başında okunmalı ve oturum sonunda güncellenmelidir.
@@ -7,19 +7,21 @@
 
 ## 🎯 Şu Anki Odak (Current Focus)
 
-* [x] Instagram video indirme ve çerez kısıtlama sorununun kök neden analizi.
-* [x] `indirici.py` dosyasında `cookies.txt` öncelikli kontrolü ve 6 popüler tarayıcı (Firefox, Chrome, Edge, Brave, Opera, Vivaldi) fall-back mekanizmasının eklenmesi.
-* [x] İndirme ve analiz performansının `concurrent_fragment_downloads: 4`, `http_chunk_size` ve `player_client: ['android', 'web']` parametreleri ile 3x-5x hızlandırılması.
-* [x] Derleme betiğinin (`derle.bat`) çalıştırılarak yeni `indirici.exe` sürümünün paketlenmesi.
+* [x] İndirme bittiğinde arayüzün otomatik sıfırlanmasını engelleme.
+* [x] "İNDİRİLEN KONUMU AÇ" ve "YENİ İNDİRME" butonlarının eklenmesi ve Python backend ile entegrasyonu.
+* [x] Sub-agent ile kod kalitesi ve mantıksal UI durum çakışmalarının test edilip düzeltilmesi.
+* [x] Değişikliklerin GitHub'a commit ve push edilmesi.
 
 ---
 
 ## 🔄 Son Değişiklikler (Recent Changes)
 
-* **Farklı Çözünürlük İndirmelerinin Atlanmama Çözümü:**
-  * Aynı video önce 720p sonra 1080p indirilmek istendiğinde, dosya adları aynı (`Video.mp4`) olduğu için `yt-dlp`'nin önceden inmiş dosyayı tespit edip 1080p indirmeyi atladığı görüldü.
-  * `indirici.py` içerisindeki `outtmpl` şablonuna çözünürlük etiketi eklendi (`%(title)s [1080p].mp4`, `%(title)s [720p].mp4`, `%(title)s [MP3].mp3`).
-  * `overwrites=True` eklendi, böylece aynı çözünürlük tekrar indirilmek istendiğinde de indirme sorunsuz gerçekleşir.
+* **İndirme Sonu Arayüz Koruması & Klasör Açma:**
+  * İndirme başarıyla tamamlandığında ekran artık 3 saniye sonra otomatik sıfırlanmıyor.
+  * `index.html` ve `index.js` dosyalarına `finishControls` konteyneri eklendi.
+  * İndirilen dosyanın/playlist'in bulunduğu klasörü tek tıkla işletim sisteminde açan `open_download_folder` metodu Python tarafında yazıldı (`os.path.normpath` ve `self.last_downloaded_path` takibi eklendi).
+  * Yeni video linki yapıştırıldığında veya "YENİ İNDİRME" butonuna tıklandığında UI durumu düzgünce sıfırlanıp hazırlanıyor.
+
 
 ---
 

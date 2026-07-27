@@ -100,11 +100,16 @@ function updateUI(title, imgUrl, sizes, source_url, playlist_entries, max_height
 
     document.getElementById('inputLoader').classList.add('hidden');
 
-    // İndirme butonunu aktif et
+    // İndirme butonunu aktif et ve görünür yap, bitiş/aktif kontrolleri gizle
     const startBtn = document.getElementById('startBtn');
     startBtn.disabled = false;
-    startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    startBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'hidden');
     startBtn.classList.add('hover:opacity-90');
+
+    const finishControls = document.getElementById('finishControls');
+    if (finishControls) finishControls.classList.add('hidden');
+    const activeControls = document.getElementById('activeControls');
+    if (activeControls) activeControls.classList.add('hidden');
 
     // Boyutları kaydet
     allSizes = sizes || {};
@@ -206,6 +211,8 @@ function resetUI(force) {
     startBtn.classList.remove('hover:opacity-90', 'hidden');
 
     document.getElementById('activeControls').classList.add('hidden');
+    const finishControls = document.getElementById('finishControls');
+    if (finishControls) finishControls.classList.add('hidden');
     document.getElementById('pauseIcon').innerText = "pause";
     document.getElementById('pauseText').innerText = "DURAKLAT";
     
@@ -237,7 +244,9 @@ function toggleTrimInputs() {
 }
 
 function browseFolder() {
-    pywebview.api.browse();
+    if (window.pywebview && window.pywebview.api) {
+        pywebview.api.browse();
+    }
 }
 
 function startDownload() {
@@ -272,10 +281,11 @@ async function togglePause() {
 }
 
 function stopDownload() {
-    pywebview.api.stop_download();
-    document.getElementById('statusText').innerText = "İptal edildi";
+    if (window.pywebview && window.pywebview.api) {
+        pywebview.api.stop_download();
+    }
+    document.getElementById('statusText').innerText = "İptal ediliyor...";
     isDownloading = false;
-    setTimeout(resetUI, 1500);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -302,9 +312,29 @@ function finishDownload(success, message) {
     document.getElementById('inputLoader').classList.add('hidden');
 
     isDownloading = false;
-    setTimeout(() => {
-        if (!isDownloading) resetUI(true);
-    }, success ? 3000 : 1500);
+    
+    if (success) {
+        // Başarılı ise sıfırlama, bitti butonlarını göster
+        document.getElementById('activeControls').classList.add('hidden');
+        const finishControls = document.getElementById('finishControls');
+        if (finishControls) finishControls.classList.remove('hidden');
+    } else {
+        // Hata veya iptal durumunda kullanıcı yenileyebilsin veya tekrar deneyebilsin diye arayüzü sıfırlama
+        document.getElementById('activeControls').classList.add('hidden');
+        const startBtn = document.getElementById('startBtn');
+        if (startBtn) {
+            startBtn.disabled = false;
+            startBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'hidden');
+            startBtn.classList.add('hover:opacity-90');
+        }
+    }
+}
+
+function openDownloadFolder() {
+    const path = document.getElementById('pathDisplay').innerText;
+    if (window.pywebview && window.pywebview.api) {
+        pywebview.api.open_download_folder(path);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════

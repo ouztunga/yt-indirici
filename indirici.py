@@ -1,15 +1,5 @@
-import ctypes
 import os
 import sys
-
-# Windows Çift Monitör (Multi-Monitor) ve DPI Farkındalığı (Kilitlenmeleri önler)
-try:
-    ctypes.windll.user32.SetProcessDpiAwarenessContext(-4)  # DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
-except Exception:
-    try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(2)      # PROCESS_PER_MONITOR_DPI_AWARE
-    except Exception:
-        pass
 
 import webview
 import yt_dlp
@@ -21,7 +11,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 
 os.environ['PYWEBVIEW_GUI'] = 'edgechromium'
-os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--disable-renderer-accessibility --disable-features=LayoutNG'
+os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--disable-renderer-accessibility --disable-features=RendererCodeIntegrity'
 
 
 def resource_path(relative_path):
@@ -60,6 +50,7 @@ class EliteApi:
         self.pause_event.set()      # Başlangıçta duraklatılmamış
         self._js_lock = threading.Lock()  # evaluate_js deadlock kilidi
         self._last_progress_time = 0      # UI throttling zaman damgası
+        self.last_downloaded_path = None  # En son indirilen (playlist alt klasörü dahil) yol
 
     # ═══════════════════════════════════════════════════════════
     #  YARDIMCI METOTLAR
@@ -318,6 +309,8 @@ class EliteApi:
                         except Exception as e:
                             logging.error(f"Playlist ilk video analiz hatası: {e}")
 
+                    self.all_sizes_cache = {}  # video_url -> {quality: size_str}
+                    self.last_downloaded_path = None
                     count = len(playlist_entries)
                     all_sizes = {"audio": f"Playlist: {count} Ses"}
                     for q in ("360", "480", "720", "1080", "1440", "2160", "4320"):
@@ -485,6 +478,8 @@ class EliteApi:
             except Exception as e:
                 logging.error(f"Playlist klasör hatası: {e}")
 
+        self.last_downloaded_path = path
+
         # Zaman aralığı kesme hesaplama
         start_sec = self._parse_time_str(start_time)
         end_sec = self._parse_time_str(end_time)
@@ -619,6 +614,25 @@ class EliteApi:
     # ═══════════════════════════════════════════════════════════
     #  API: KONTROLLER
     # ═══════════════════════════════════════════════════════════
+
+    def open_download_folder(self, path=None):
+        target_path = self.last_downloaded_path if (self.last_downloaded_path and os.path.exists(self.last_downloaded_path)) else path
+        if not target_path:
+            return
+        target_path = os.path.normpath(target_path)
+        if not os.path.exists(target_path):
+            logging.warning(f"Açılacak dizin bulunamadı: {target_path}")
+            return
+        try:
+            if os.name == 'nt':
+                os.startfile(target_path)
+            else:
+                import subprocess
+                opener = "open" if sys.platform == "darwin" else "xdg-open"
+                subprocess.Popen([opener, target_path])
+        except Exception as e:
+            logging.error(f"Klasör açılırken hata: {e}")
+
 
     def stop_download(self):
         self.should_stop = True
