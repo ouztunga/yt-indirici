@@ -11,10 +11,9 @@ python -m PyInstaller --noconfirm Yt-Indirici.spec
 
 if %errorlevel% equ 0 (
     echo.
-    echo BASARILI: Yt-Indirici.exe 'dist' klasorunde olusturuldu.
+    echo BASARILI: indirici.exe 'dist' klasorunde olusturuldu.
     echo Ana klasore kopyalaniyor...
-    copy /y dist\Yt-Indirici.exe .
-    copy /y dist\Yt-Indirici.exe indirici.exe
+    copy /y dist\indirici.exe .
     echo Islem tamamlandi!
 ) else (
     echo.
