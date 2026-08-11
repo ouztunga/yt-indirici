@@ -243,9 +243,12 @@ function toggleTrimInputs() {
     }
 }
 
-function browseFolder() {
+async function browseFolder() {
     if (window.pywebview && window.pywebview.api) {
-        pywebview.api.browse();
+        const path = await pywebview.api.browse();
+        if (path) {
+            document.getElementById('pathDisplay').innerText = path;
+        }
     }
 }
 

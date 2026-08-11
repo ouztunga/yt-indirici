@@ -2,13 +2,14 @@ import os
 import sys
 
 import webview
-import yt_dlp
 import threading
 import logging
 import traceback
 import base64
 import json
 from concurrent.futures import ThreadPoolExecutor
+
+__version__ = "1.3.0"
 
 os.environ['PYWEBVIEW_GUI'] = 'edgechromium'
 os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--disable-renderer-accessibility --disable-features=RendererCodeIntegrity'
@@ -51,17 +52,21 @@ class EliteApi:
         self._js_lock = threading.Lock()  # evaluate_js deadlock kilidi
         self._last_progress_time = 0      # UI throttling zaman damgası
         self.last_downloaded_path = None  # En son indirilen (playlist alt klasörü dahil) yol
+        self._current_analyze_id = 0      # İptal kontrolü için analiz ID'si
 
     # ═══════════════════════════════════════════════════════════
     #  YARDIMCI METOTLAR
     # ═══════════════════════════════════════════════════════════
 
     def _js(self, code):
-        """Thread-safe evaluate_js wrapper (Deadlock korumalı)."""
+        """Thread-safe evaluate_js wrapper (Deadlock korumalı, timeout'lu)."""
         try:
             if self.window:
-                with self._js_lock:
-                    self.window.evaluate_js(code)
+                if self._js_lock.acquire(timeout=0.5):
+                    try:
+                        self.window.evaluate_js(code)
+                    finally:
+                        self._js_lock.release()
         except Exception:
             pass
 
@@ -104,7 +109,7 @@ class EliteApi:
             'no_warnings': True,
             'check_formats': False,
             'nocheckcertificate': True,
-            'socket_timeout': 30,
+            'socket_timeout': 10,
             'concurrent_fragment_downloads': 4,
             'http_chunk_size': 10485760,  # 10MB chunk
             'buffersize': 1024 * 1024,   # 1MB buffer
@@ -237,9 +242,11 @@ class EliteApi:
         if not url or url.strip() == "":
             self.last_info = None
             return
-        threading.Thread(target=self._analyze_thread, args=(url,), daemon=True).start()
+        self._current_analyze_id += 1
+        current_id = self._current_analyze_id
+        threading.Thread(target=self._analyze_thread, args=(url, current_id), daemon=True).start()
 
-    def _analyze_thread(self, url):
+    def _analyze_thread(self, url, analyze_id):
         needs_cookies = any(d in url.lower() for d in ['instagram.com', 'tiktok.com', 'twitter.com', 'x.com'])
         is_playlist = 'list=' in url
 
@@ -248,15 +255,16 @@ class EliteApi:
         source_type, source_val = self._find_cookie_source()
         if source_type == 'file':
             attempts.append({'type': 'file', 'val': source_val})
-
-        if needs_cookies:
-            for b in ['firefox', 'chrome', 'edge', 'brave', 'opera', 'vivaldi']:
-                attempts.append({'type': 'browser', 'val': b})
+        elif source_type == 'browser' and needs_cookies:
+            attempts.append({'type': 'browser', 'val': source_val})
 
         attempts.append({'type': 'none', 'val': None})
 
         last_error = None
         for attempt in attempts:
+            if analyze_id != self._current_analyze_id:
+                return  # Eski analiz iptal edildi
+
             try:
                 if attempt['type'] == 'file':
                     ydl_opts = self._ydl_opts(url=url, noplaylist=not is_playlist, extract_flat='in_playlist' if is_playlist else False, lazy_playlist=True)
@@ -265,8 +273,12 @@ class EliteApi:
                 else:
                     ydl_opts = self._ydl_opts(url=url, force_no_cookies=True, noplaylist=not is_playlist, extract_flat='in_playlist' if is_playlist else False, lazy_playlist=True)
 
+                import yt_dlp
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    self.last_info = ydl.extract_info(url, download=False)
+                    info = ydl.extract_info(url, download=False)
+                    if analyze_id != self._current_analyze_id:
+                        return
+                    self.last_info = info
 
                 # Başarılı — sonucu işle
                 title = self.last_info.get('title', 'Bilinmeyen Video')
@@ -297,18 +309,6 @@ class EliteApi:
                             'thumbnail': entry.get('thumbnail'),
                         })
 
-                    # İlk videonun formatlarından max yükseklik tespit et
-                    if playlist_entries and playlist_entries[0].get('id'):
-                        try:
-                            first_url = playlist_entries[0].get('url') or playlist_entries[0].get('webpage_url') or f"https://www.youtube.com/watch?v={playlist_entries[0]['id']}"
-                            with yt_dlp.YoutubeDL(self._ydl_opts(url=first_url)) as ydl2:
-                                first_info = ydl2.extract_info(first_url, download=False)
-                                heights = [f.get('height') for f in first_info.get('formats', []) if f.get('height')]
-                                if heights:
-                                    max_height = max(heights)
-                        except Exception as e:
-                            logging.error(f"Playlist ilk video analiz hatası: {e}")
-
                     self.all_sizes_cache = {}  # video_url -> {quality: size_str}
                     self.last_downloaded_path = None
                     count = len(playlist_entries)
@@ -322,6 +322,9 @@ class EliteApi:
                     if heights:
                         max_height = max(heights)
                     all_sizes = self._calc_all_sizes(self.last_info)
+
+                if analyze_id != self._current_analyze_id:
+                    return
 
                 # Frontend'e gönder
                 self._js(
@@ -347,6 +350,9 @@ class EliteApi:
                 # Sonraki denemeye geç
                 continue
 
+        if analyze_id != self._current_analyze_id:
+            return
+
         # Tüm denemeler başarısız
         err_msg = str(last_error) if last_error else ""
         if needs_cookies and ("empty media" in err_msg or "login" in err_msg.lower() or "DPAPI" in err_msg or "Cookie" in err_msg):
@@ -371,6 +377,7 @@ class EliteApi:
 
             try:
                 video_url = entry.get('url') or entry.get('webpage_url') or f"https://www.youtube.com/watch?v={video_id}"
+                import yt_dlp
                 with yt_dlp.YoutubeDL(self._ydl_opts(url=video_url)) as ydl:
                     info = ydl.extract_info(video_url, download=False)
                     if info:
@@ -418,7 +425,6 @@ class EliteApi:
             if result and len(result) > 0:
                 self.download_path = result[0]
                 safe = self.download_path.replace("\\", "/")
-                self._js(f"document.getElementById('pathDisplay').innerText = {json.dumps(safe)}")
                 return safe
             return None
         except Exception as e:
@@ -467,6 +473,7 @@ class EliteApi:
         is_playlist = 'list=' in url
         if is_playlist:
             try:
+                import yt_dlp
                 with yt_dlp.YoutubeDL(self._ydl_opts(url=url, extract_flat=True)) as ydl:
                     pl_info = ydl.extract_info(url, download=False)
                     pl_title = pl_info.get('title', 'Playlist')
@@ -535,6 +542,7 @@ class EliteApi:
             })
 
         try:
+            import yt_dlp
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
 
@@ -543,11 +551,12 @@ class EliteApi:
             else:
                 self._js(f"finishDownload(true, {json.dumps('✅ İndirme Başarıyla Tamamlandı!')})")
 
-        except yt_dlp.utils.DownloadCancelled:
-            self._js(f"finishDownload(false, {json.dumps('⚠️ İptal edildi.')})")
         except Exception as e:
-            logging.error(f"İndirme hatası: {e}\n{traceback.format_exc()}")
-            self._js(f"finishDownload(false, {json.dumps('❌ İndirme Hatası! Detaylar: indirici_hata.log')})")
+            if type(e).__name__ == "DownloadCancelled":
+                self._js(f"finishDownload(false, {json.dumps('⚠️ İptal edildi.')})")
+            else:
+                logging.error(f"İndirme hatası: {e}\n{traceback.format_exc()}")
+                self._js(f"finishDownload(false, {json.dumps('❌ İndirme Hatası! Detaylar: indirici_hata.log')})")
 
     def _progress_hook(self, d):
         """yt-dlp ilerleme hook'u — duraklatma ve durdurma kontrolü yapar."""
@@ -556,6 +565,7 @@ class EliteApi:
 
         # Durdurma
         if self.should_stop:
+            import yt_dlp
             raise yt_dlp.utils.DownloadCancelled("STOP_REQUESTED")
 
         if d['status'] != 'downloading' or not self.window:
@@ -569,10 +579,10 @@ class EliteApi:
 
             percent = (downloaded / total) * 100
 
-            # Saniyede maksimum 10 kez UI güncelle (Arayüz kilitlenmelerini önler)
+            # Saniyede maksimum 3 kez UI güncelle (IPC ve WebView2 kilitlenmelerini önler)
             import time
             now = time.time()
-            if now - self._last_progress_time < 0.1 and percent < 100:
+            if now - self._last_progress_time < 0.3 and percent < 100:
                 return
             self._last_progress_time = now
 
@@ -715,6 +725,9 @@ if __name__ == '__main__':
             html_content = html_content.replace('src="logo.png"', f'src="{logo_data}"')
             html_content = html_content.replace('let LOGO_DATA = "";', f'let LOGO_DATA = "{logo_data}";')
 
+        # Sürüm numarasını HTML'e senkronize et
+        html_content = html_content.replace('v1.2.0', f'v{__version__}')
+
         # Başlangıç değerlerini enjekte et (Pywebview on_loaded kilidini önlemek için)
         safe_path = api.download_path.replace("\\", "/")
         html_content = html_content.replace('>/Downloads/<', f'>{safe_path}<')
@@ -727,7 +740,7 @@ if __name__ == '__main__':
 
         # Pencere oluştur
         window = webview.create_window(
-            title='İndirici v1.3.0',
+            title=f'İndirici v{__version__}',
             html=html_content,
             js_api=api,
             width=1100,
