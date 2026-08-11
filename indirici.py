@@ -1,5 +1,16 @@
 import os
 import sys
+import io
+import tempfile
+
+# PyInstaller --noconsole modunda stdout/stderr None olacağı için donduran hataları önle
+if getattr(sys, 'frozen', False):
+    sys.stdout = io.StringIO()
+    sys.stderr = io.StringIO()
+
+# PYWEBVIEW_GUI, import webview'den ÖNCE ayarlanmalıdır!
+os.environ['PYWEBVIEW_GUI'] = 'edgechromium'
+os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--disable-gpu-shader-disk-cache --disable-features=RendererCodeIntegrity'
 
 import webview
 import threading
@@ -10,9 +21,6 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 
 __version__ = "1.3.0"
-
-os.environ['PYWEBVIEW_GUI'] = 'edgechromium'
-os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--disable-renderer-accessibility --disable-features=RendererCodeIntegrity'
 
 
 def resource_path(relative_path):
@@ -45,6 +53,7 @@ class EliteApi:
         ))
         self.download_path = os.path.join(os.path.expanduser("~"), "Downloads")
         self.window = None          # pywebview pencere referansı
+        self.is_ready = False       # WebView2 tam yüklendi flag'i
         self.last_info = None       # Son analiz edilen video bilgisi
         self.should_stop = False    # İndirme durdurma flag'i
         self.pause_event = threading.Event()
@@ -59,14 +68,15 @@ class EliteApi:
     # ═══════════════════════════════════════════════════════════
 
     def _js(self, code):
-        """Thread-safe evaluate_js wrapper (Deadlock korumalı, timeout'lu)."""
+        """Thread-safe evaluate_js wrapper (Deadlock korumalı, timeout'lu ve ready-checked)."""
+        if not self.window or not getattr(self, 'is_ready', False):
+            return
         try:
-            if self.window:
-                if self._js_lock.acquire(timeout=0.5):
-                    try:
-                        self.window.evaluate_js(code)
-                    finally:
-                        self._js_lock.release()
+            if self._js_lock.acquire(timeout=0.2):
+                try:
+                    self.window.evaluate_js(code)
+                finally:
+                    self._js_lock.release()
         except Exception:
             pass
 
@@ -738,10 +748,16 @@ if __name__ == '__main__':
                 '⚠️ UYARI: ffmpeg.exe bulunamadı! İndirmeler çalışmayabilir.'
             )
 
-        # Pencere oluştur
+        # Dev HTML metnini geçici bir dosyaya yazarak IPC deadlock'ını engelle
+        temp_dir = tempfile.gettempdir()
+        temp_html_path = os.path.join(temp_dir, f"indirici_ui_{__version__}.html")
+        with open(temp_html_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        # Pencere oluştur (url üzerinden yükleme IPC kilitlenmesini önler)
         window = webview.create_window(
             title=f'İndirici v{__version__}',
-            html=html_content,
+            url=f"file:///{temp_html_path.replace('\\', '/')}",
             js_api=api,
             width=1100,
             height=750,
@@ -751,7 +767,14 @@ if __name__ == '__main__':
         )
         api.window = window     # API'ye pencere referansı ver
 
-        webview.start(gui='edgechromium', debug=False)
+        # DOM ve Window tam yüklendiğinde is_ready flag'ini aktif et
+        def on_loaded():
+            api.is_ready = True
+
+        window.events.loaded += on_loaded
+
+        # gui='edgechromium' argümanı çıkarıldı (ortam değişkeninden alınır, çakışmayı önler)
+        webview.start(debug=False)
 
     except Exception as e:
         logging.critical(f"Uygulama çökme hatası: {e}\n{traceback.format_exc()}")
