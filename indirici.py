@@ -252,11 +252,17 @@ class EliteApi:
         if not url or url.strip() == "":
             self.last_info = None
             return
+            
+        original_url = url
+        # Shorts linklerini normal videoya çevir (Analiz takılmalarını önler)
+        if "youtube.com/shorts/" in url:
+            url = url.replace("youtube.com/shorts/", "youtube.com/watch?v=")
+
         self._current_analyze_id += 1
         current_id = self._current_analyze_id
-        threading.Thread(target=self._analyze_thread, args=(url, current_id), daemon=True).start()
+        threading.Thread(target=self._analyze_thread, args=(url, current_id, original_url), daemon=True).start()
 
-    def _analyze_thread(self, url, analyze_id):
+    def _analyze_thread(self, url, analyze_id, original_url=None):
         needs_cookies = any(d in url.lower() for d in ['instagram.com', 'tiktok.com', 'twitter.com', 'x.com'])
         is_playlist = 'list=' in url
 
@@ -339,7 +345,7 @@ class EliteApi:
                 # Frontend'e gönder
                 self._js(
                     f"updateUI({json.dumps(title)}, {json.dumps(thumb)}, "
-                    f"{json.dumps(all_sizes)}, {json.dumps(url)}, "
+                    f"{json.dumps(all_sizes)}, {json.dumps(original_url or url)}, "
                     f"{json.dumps(playlist_entries)}, {max_height})"
                 )
                 self._js(f"updateProgress(0, {json.dumps('✅ Video analiz edildi. İndirmeye hazır.')})")
@@ -544,10 +550,11 @@ class EliteApi:
             })
         else:
             ydl_opts.update({
-                'format': f'bestvideo[height<={quality}]+bestaudio/best',
+                # Premiere Pro uyumluluğu için KESİN H264 (avc) ve AAC Ses (Subagent Brainstormed Rule)
+                'format': f'bestvideo[vcodec^=avc][height<={quality}]+bestaudio[ext=m4a]/bestvideo[vcodec^=avc][height<={quality}]+bestaudio/best[vcodec^=avc][height<={quality}]',
                 'merge_output_format': 'mp4',
                 'postprocessor_args': {
-                    'merger': ['-c', 'copy'],   # Remux — codec dönüşümü yok
+                    'merger': ['-c:v', 'copy', '-c:a', 'aac'],
                 },
             })
 
@@ -685,7 +692,11 @@ class EliteApi:
                 py = os.path.abspath(sys.argv[0])
                 cmd = f'cmd /c "ping 127.0.0.1 -n 3 >nul & start "" python "{py}""'
 
-        subprocess.Popen(cmd, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+        env = os.environ.copy()
+        env.pop('_MEIPASS2', None)
+        env.pop('_MEIPASS', None)
+
+        subprocess.Popen(cmd, shell=True, env=env, creationflags=subprocess.CREATE_NO_WINDOW)
         os._exit(0)
 
 
