@@ -34,3 +34,49 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .custom-scroll::-webkit-scrollbar-track { background: transparent; }
 .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+.path-container {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+}
+
+.path-box {
+    display: flex !important;
+    align-items: center !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    background: #0e0e0e !important;
+    border: 1px solid #464554 !important;
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
+}
+
+#pathDisplay {
+    display: block !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+.browse-btn {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    border: 1px solid #464554 !important;
+    color: #ffffff !important;
+    padding: 10px 16px !important;
+    border-radius: 8px !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    background: transparent !important;
+    transition: all 0.2s !important;
+}
+.browse-btn:hover {
+    background: #2a2a2a !important;
+}

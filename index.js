@@ -247,7 +247,11 @@ async function browseFolder() {
     if (window.pywebview && window.pywebview.api) {
         const path = await pywebview.api.browse();
         if (path) {
-            document.getElementById('pathDisplay').innerText = path;
+            const display = document.getElementById('pathDisplay');
+            if (display) {
+                display.innerText = path;
+                display.title = path;
+            }
         }
     }
 }

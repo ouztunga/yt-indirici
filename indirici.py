@@ -24,7 +24,14 @@ __version__ = "1.3.0"
 
 
 def resource_path(relative_path):
-    """PyInstaller ile paketlenmişse _MEIPASS, değilse dosya dizini."""
+    """Öncelikle uygulamanın çalıştığı dizindeki yerel dosyaya bak (canlı düzenlemeleri yakalamak için), yoksa _MEIPASS."""
+    try:
+        app_dir = os.path.dirname(os.path.realpath(sys.executable if getattr(sys, 'frozen', False) else __file__))
+        local_path = os.path.join(app_dir, relative_path)
+        if os.path.exists(local_path):
+            return local_path
+    except Exception:
+        pass
     try:
         base_path = sys._MEIPASS
     except Exception:

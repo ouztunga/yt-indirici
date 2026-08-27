@@ -47,8 +47,8 @@
 </div>
 
 <!-- Sağ Kolon: Kontroller -->
-<div class="w-[60%] flex flex-col gap-5">
-    <div class="glass-card p-6 rounded-xl border border-outline-variant flex flex-col">
+<div class="w-[60%] min-w-0 flex flex-col gap-5">
+    <div class="glass-card p-6 rounded-xl border border-outline-variant flex flex-col min-w-0">
         <div class="flex items-center justify-between mb-5">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">tune</span>
@@ -130,12 +130,12 @@
 
         <div class="mb-auto">
             <label class="text-xs text-gray-400 uppercase block mb-3 tracking-wider">İNDİRME KONUMU</label>
-            <div class="flex gap-2">
-                <div class="flex-1 bg-[#0e0e0e] border border-[#464554] rounded-lg px-4 py-3 flex items-center">
-                    <span class="material-symbols-outlined text-gray-400 mr-2">folder_open</span>
-                    <span id="pathDisplay" class="text-sm text-gray-400 truncate">/Downloads/</span>
+            <div class="path-container">
+                <div class="path-box">
+                    <span class="material-symbols-outlined text-gray-400 mr-2 shrink-0">folder_open</span>
+                    <span id="pathDisplay" class="text-sm text-gray-400">/Downloads/</span>
                 </div>
-                <button onclick="browseFolder()" class="border border-[#464554] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#2a2a2a] transition-all">Gözat</button>
+                <button type="button" onclick="browseFolder()" class="browse-btn">Gözat</button>
             </div>
         </div>
 
