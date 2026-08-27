@@ -130,6 +130,11 @@ class EliteApi:
             'concurrent_fragment_downloads': 4,
             'http_chunk_size': 10485760,  # 10MB chunk
             'buffersize': 1024 * 1024,   # 1MB buffer
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web']
+                }
+            },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -536,7 +541,7 @@ class EliteApi:
             overwrites=True,
             noplaylist=not is_playlist,
             lazy_playlist=True,
-            ignoreerrors=True,
+            ignoreerrors=False,
         )
 
         if has_trim:
@@ -557,8 +562,8 @@ class EliteApi:
             })
         else:
             ydl_opts.update({
-                # Premiere Pro uyumluluğu için KESİN H264 (avc) ve AAC Ses (Subagent Brainstormed Rule)
-                'format': f'bestvideo[vcodec^=avc][height<={quality}]+bestaudio[ext=m4a]/bestvideo[vcodec^=avc][height<={quality}]+bestaudio/best[vcodec^=avc][height<={quality}]',
+                # Premiere Pro uyumluluğu için KESİN H264 (avc) ve AAC Ses (fallback ile)
+                'format': f'bestvideo[vcodec^=avc][height<={quality}]+bestaudio[ext=m4a]/bestvideo[vcodec^=avc][height<={quality}]+bestaudio/bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best',
                 'merge_output_format': 'mp4',
                 'postprocessor_args': {
                     'merger': ['-c:v', 'copy', '-c:a', 'aac'],
