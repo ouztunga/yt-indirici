@@ -120,19 +120,26 @@ class EliteApi:
         return (None, None)
 
     def _ydl_opts(self, url="", force_browser=None, force_no_cookies=False, **extra):
-        """Tüm yt-dlp çağrıları için ortak ve optimize edilmiş ayarlar."""
+        """Tüm yt-dlp çağrıları için ortak ve yüksek performanslı ayarlar."""
+        aria2_exe = os.path.join(self.base_path, "aria2c.exe")
+        use_aria2 = os.path.exists(aria2_exe)
+
         opts = {
             'quiet': True,
             'no_warnings': True,
             'check_formats': False,
             'nocheckcertificate': True,
-            'socket_timeout': 10,
-            'concurrent_fragment_downloads': 4,
-            'http_chunk_size': 10485760,  # 10MB chunk
-            'buffersize': 1024 * 1024,   # 1MB buffer
+            'socket_timeout': 15,
+            'concurrent_fragment_downloads': 8,  # 8 eşzamanlı parça indirme (DASH/Video hız patlaması)
+            'http_chunk_size': 10485760,         # 10MB chunk boyutu
+            'buffersize': 1048576,               # 1MB disk/soket bellek tamponu (Disk I/O darboğazını sıfırlar)
+            'retries': 10,
+            'fragment_retries': 10,
+            'cachedir': False,                   # Bayat n-token cache'ini önler
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'web']
+                    'player_client': ['android', 'web', 'ios', 'mweb'],
+                    'player_skip': ['configs', 'webpage'],
                 }
             },
             'http_headers': {
@@ -141,6 +148,19 @@ class EliteApi:
                 'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
             },
         }
+
+        if use_aria2:
+            opts.update({
+                'external_downloader': 'aria2c',
+                'external_downloader_args': [
+                    '--min-split-size=1M',
+                    '--max-connection-per-server=8',
+                    '--split=8',
+                    '--file-allocation=none',     # Windows disk tahsis gecikmesini sıfırlar
+                    '--console-log-level=warn',
+                    '--summary-interval=0'
+                ]
+            })
 
         if not force_no_cookies:
             if force_browser:
@@ -570,22 +590,61 @@ class EliteApi:
                 },
             })
 
-        try:
-            import yt_dlp
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
+        clients_pool = [
+            ['android', 'web'],
+            ['ios', 'web'],
+            ['mweb', 'android'],
+        ]
 
+        success = False
+        last_download_error = None
+
+        for attempt, client_list in enumerate(clients_pool):
             if self.should_stop:
-                self._js(f"finishDownload(false, {json.dumps('⚠️ İptal edildi.')})")
-            else:
-                self._js(f"finishDownload(true, {json.dumps('✅ İndirme Başarıyla Tamamlandı!')})")
+                break
 
-        except Exception as e:
-            if type(e).__name__ == "DownloadCancelled":
-                self._js(f"finishDownload(false, {json.dumps('⚠️ İptal edildi.')})")
-            else:
-                logging.error(f"İndirme hatası: {e}\n{traceback.format_exc()}")
-                self._js(f"finishDownload(false, {json.dumps('❌ İndirme Hatası! Detaylar: indirici_hata.log')})")
+            ydl_opts_current = dict(ydl_opts)
+            ydl_opts_current['extractor_args'] = {
+                'youtube': {
+                    'player_client': client_list,
+                    'player_skip': ['configs', 'webpage'],
+                }
+            }
+
+            try:
+                import yt_dlp
+                with yt_dlp.YoutubeDL(ydl_opts_current) as ydl:
+                    ydl.download([url])
+                success = True
+                break
+            except Exception as e:
+                last_download_error = e
+                err_str = str(e)
+                if "STOP_REQUESTED" in err_str or self.should_stop:
+                    break
+                is_throttle_or_403 = any(w in err_str for w in ["403", "Forbidden", "THROTTLE", "429", "timed out", "SABR"])
+                if is_throttle_or_403 and attempt < len(clients_pool) - 1:
+                    self._js(f"updateProgress(0, {json.dumps('🔄 Hız kısıtı aşıldı, bağlantı tazeleniyor...')})")
+                    import time
+                    time.sleep(1)
+                    continue
+                else:
+                    break
+            finally:
+                import gc
+                gc.collect()
+
+        if self.should_stop:
+            self._js(f"finishDownload(false, {json.dumps('⚠️ İptal edildi.')})")
+        elif success:
+            self._js(f"finishDownload(true, {json.dumps('✅ İndirme Başarıyla Tamamlandı!')})")
+        else:
+            err_msg = str(last_download_error) if last_download_error else "Bilinmeyen hata"
+            logging.error(f"İndirme hatası: {err_msg}\n{traceback.format_exc()}")
+            self._js(f"finishDownload(false, {json.dumps('❌ İndirme Hatası: ' + err_msg[:50])})")
+
+        import gc
+        gc.collect()
 
     def _progress_hook(self, d):
         """yt-dlp ilerleme hook'u — duraklatma ve durdurma kontrolü yapar."""

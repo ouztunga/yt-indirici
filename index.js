@@ -299,6 +299,9 @@ function stopDownload() {
 //  İLERLEME & SONUÇ (Python'dan çağrılır)
 // ═══════════════════════════════════════════════════════════
 
+let pendingProgress = null;
+let progressAnimScheduled = false;
+
 function updateProgress(percent, text, plIndex, plTotal) {
     let displayPercent = percent;
     let displayText = text;
@@ -308,9 +311,25 @@ function updateProgress(percent, text, plIndex, plTotal) {
         displayText = `(${plIndex}/${plTotal}) ${text}`;
     }
 
-    document.getElementById('progressBar').style.width = displayPercent + '%';
-    document.getElementById('statusText').innerText = displayText;
-    if (percent === 0) document.getElementById('inputLoader').classList.add('hidden');
+    pendingProgress = { percent: displayPercent, text: displayText };
+
+    if (!progressAnimScheduled) {
+        progressAnimScheduled = true;
+        window.requestAnimationFrame(() => {
+            if (pendingProgress) {
+                const bar = document.getElementById('progressBar');
+                const status = document.getElementById('statusText');
+                if (bar) bar.style.width = pendingProgress.percent + '%';
+                if (status) status.innerText = pendingProgress.text;
+            }
+            progressAnimScheduled = false;
+        });
+    }
+
+    if (percent === 0) {
+        const loader = document.getElementById('inputLoader');
+        if (loader) loader.classList.add('hidden');
+    }
 }
 
 function finishDownload(success, message) {
