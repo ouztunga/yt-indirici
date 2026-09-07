@@ -9,6 +9,11 @@ bun.lockb
 # Build & Output
 dist/
 build/
+*.exe
+*.spec
+__pycache__/
+*.py[cod]
+*$py.class
 .next/
 out/
 .nuxt/

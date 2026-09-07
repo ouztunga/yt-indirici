@@ -1,6 +1,9 @@
 @echo off
 title YT Indirici Baslatici
 
+:: Calisma dizinini betigin bulundugu klasore sabitle
+cd /d "%~dp0"
+
 :: Önce pyw.exe sistemde var mı diye kontrol et (böylece Windows hata uyarısı vermez)
 where pyw >nul 2>&1
 if %errorlevel% equ 0 (

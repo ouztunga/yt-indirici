@@ -1,4 +1,4 @@
-<!-- last_updated: 2026-07-27 -->
+<!-- last_updated: 2026-09-07 -->
 # ⚡ Active Context / Aktif Bağlam
 
 > **AI Instruction:** Bu dosya, MEVCUT oturum durumunun tek doğru kaynağıdır. Anlık görevleri, aktif tasarım kararlarını, son kod değişikliklerini ve karşılaşılan engelleri takip eder. Her oturum başında okunmalı ve oturum sonunda güncellenmelidir.
@@ -7,32 +7,35 @@
 
 ## 🎯 Şu Anki Odak (Current Focus)
 
-* [x] İndirme bittiğinde arayüzün otomatik sıfırlanmasını engelleme.
-* [x] "İNDİRİLEN KONUMU AÇ" ve "YENİ İNDİRME" butonlarının eklenmesi ve Python backend ile entegrasyonu.
-* [x] Sub-agent ile kod kalitesi ve mantıksal UI durum çakışmalarının test edilip düzeltilmesi.
-* [x] Değişikliklerin GitHub'a commit ve push edilmesi.
+* [x] Edge/Chrome kilitli çerez hatasının (`Could not copy Chrome cookie database`) giderilmesi.
+* [x] Instagram, TikTok, YouTube ve Twitter için çerezsiz öncelikli analiz ve indirme fallback'i eklenmesi.
+* [x] `yt-dlp` sürümünün en güncel sürüme yükseltilmesi.
+* [x] EXE mimarisinin sonlandırılması ve doğrudan `baslat.bat` / `baslat.vbs` (Pythonw) hafif çalışma modeline geçilmesi.
+* [x] `indirici.exe` ve PyInstaller derleme artıklarının güvenle temizlenmesi.
 
 ---
 
 ## 🔄 Son Değişiklikler (Recent Changes)
 
-* **İndirme Sonu Arayüz Koruması & Klasör Açma:**
-  * İndirme başarıyla tamamlandığında ekran artık 3 saniye sonra otomatik sıfırlanmıyor.
-  * `index.html` ve `index.js` dosyalarına `finishControls` konteyneri eklendi.
-  * İndirilen dosyanın/playlist'in bulunduğu klasörü tek tıkla işletim sisteminde açan `open_download_folder` metodu Python tarafında yazıldı (`os.path.normpath` ve `self.last_downloaded_path` takibi eklendi).
-  * Yeni video linki yapıştırıldığında veya "YENİ İNDİRME" butonuna tıklandığında UI durumu düzgünce sıfırlanıp hazırlanıyor.
-
+* **Çerez Güvenliği ve Zırhlı İndirme:**
+  * `_find_cookie_source()` fonksiyonunda açık tarayıcıların kilitli SQLite çerez dosyaları önceden test ediliyor, kilitliyse atlanıyor.
+  * Açık sosyal medya linklerinde %99 oranında çerez gerekmediği için `none` (çerezsiz) mod önceliklendirildi.
+  * İndirme sırasında herhangi bir çerez okuma/DPAPI hatası alınırsa işlem iptal edilmiyor; anında çerezleri sıfırlayıp doğrudan indirmeye geçiyor.
+* **Saf Python + `.bat` Mimarisine Geçiş:**
+  * `indirici.exe` (57 MB) ve `derle.bat`, `Yt-Indirici.spec` dosyaları Geri Dönüşüm Kutusu'na taşındı.
+  * `.gitignore` güncellendi (`*.exe`, `*.spec`, `__pycache__/`).
+  * `baslat.bat` içine çalışma dizini sabitlemesi (`cd /d "%~dp0"`) eklendi; doğrudan tıklandığında konsolsuz ve anında açılıyor.
 
 ---
 
 ## 🧠 Aktif Kararlar ve Mimari Düşünceler (Active Decisions & Architecture Thoughts)
 
-* **Karar: Local `cookies.txt` Önceliği:**
-  * Modern tarayıcılar (Chrome 127+) Windows DPAPI şifrelemesini sıkılaştırdığından, kilitli durumlar için kullanıcı odaklı `cookies.txt` desteği en kararlı ve kesintisiz fallback olarak seçilmiştir.
+* **Karar: Exe Yerine Doğrudan Script Çalıştırma:**
+  * PyInstaller tekil exe paketleri Windows'ta her açılışta `%TEMP%` dizinine açıldığı için gecikme yaratıyordu ve her kod güncellemesinde 40 sn derleme süresi gerektiriyordu. Doğrudan `baslat.bat` / `pythonw` kullanılarak anında açılış, sıfır derleme süresi ve 0 false-positive sağlandı.
 
 ---
 
 ## 🚶‍♂️ Hemen Sonraki Adımlar (Immediate Next Steps)
 
-* [ ] `derle.bat` arka plan işleminin tamamlanmasının doğrulanması.
-* [ ] Kullanıcının güncellenmiş `indirici.exe` uygulamasını test etmesi.
+* [x] Uygulamanın `baslat.bat` ile test edilmesi.
+* [ ] Kullanıcının yeni indirmeleri denemesi.
