@@ -69,6 +69,7 @@ class EliteApi:
         self._last_progress_time = 0      # UI throttling zaman damgası
         self.last_downloaded_path = None  # En son indirilen (playlist alt klasörü dahil) yol
         self._current_analyze_id = 0      # İptal kontrolü için analiz ID'si
+        self.last_working_cookie_mode = 'none'  # En son çalışan çerez modu ('none', 'file', 'browser')
 
     # ═══════════════════════════════════════════════════════════
     #  YARDIMCI METOTLAR
@@ -88,8 +89,8 @@ class EliteApi:
             pass
 
     def _find_cookie_source(self):
-        """Öncelikle local cookies.txt var mı bak, yoksa tarayıcı çerezlerini tara."""
-        # 1. cookies.txt kontrolü (En kararlı yöntem)
+        """Öncelikle local cookies.txt var mı bak, yoksa okunabilir ve kilitli olmayan tarayıcı çerezlerini tara."""
+        # 1. cookies.txt kontrolü (En kararlı ve kilitlenme riski olmayan yöntem)
         possible_txts = [
             os.path.join(self.base_path, 'cookies.txt'),
             os.path.join(os.getcwd(), 'cookies.txt'),
@@ -100,7 +101,7 @@ class EliteApi:
             if os.path.exists(txt) and os.path.getsize(txt) > 0:
                 return ('file', txt)
 
-        # 2. Mevcut tarayıcı çerezleri
+        # 2. Mevcut ve KİLİTLİ OLMAYAN tarayıcı çerezleri
         local = os.environ.get('LOCALAPPDATA', '')
         appdata = os.environ.get('APPDATA', '')
 
@@ -115,7 +116,16 @@ class EliteApi:
 
         for name, cookie_path in browsers:
             if os.path.exists(cookie_path):
-                return ('browser', name)
+                if name == 'firefox':
+                    return ('browser', name)
+                # Chromium tabanlı tarayıcılarda dosya kilitli mi test et (Edge/Chrome açıkken kilitlidir)
+                try:
+                    with open(cookie_path, 'rb') as f:
+                        f.read(1)
+                    return ('browser', name)
+                except Exception:
+                    # Tarayıcı veya WebView2 açık olduğunda dosya kilitlidir, atla
+                    continue
 
         return (None, None)
 
@@ -170,7 +180,10 @@ class EliteApi:
                 if source_type == 'file':
                     opts['cookiefile'] = source_val
                 elif source_type == 'browser' and url and any(d in url.lower() for d in ['instagram.com', 'tiktok.com', 'twitter.com', 'x.com']):
-                    opts['cookiesfrombrowser'] = (source_val, None, None, None)
+                    # Yalnızca analiz aşamasında tarayıcı çerezi başarılı olduysa çerez ekle
+                    working_mode = getattr(self, 'last_working_cookie_mode', None)
+                    if working_mode == 'browser':
+                        opts['cookiesfrombrowser'] = (source_val, None, None, None)
 
         opts.update(extra)
         return opts
@@ -303,10 +316,14 @@ class EliteApi:
         source_type, source_val = self._find_cookie_source()
         if source_type == 'file':
             attempts.append({'type': 'file', 'val': source_val})
-        elif source_type == 'browser' and needs_cookies:
-            attempts.append({'type': 'browser', 'val': source_val})
 
+        # 1. Öncelik: Çerezsiz (none) doğrudan erişim.
+        # Açık Instagram, TikTok, YouTube ve Twitter videolarının %99'u çerezsiz sorunsuz ve kilitlenme riski olmadan çalışır.
         attempts.append({'type': 'none', 'val': None})
+
+        # 2. Son çare: Çerezsiz başarısız olursa ve kilitli olmayan bir tarayıcı çerezi varsa dene
+        if source_type == 'browser' and needs_cookies:
+            attempts.append({'type': 'browser', 'val': source_val})
 
         last_error = None
         for attempt in attempts:
@@ -328,7 +345,8 @@ class EliteApi:
                         return
                     self.last_info = info
 
-                # Başarılı — sonucu işle
+                # Başarılı — sonucu işle ve çalışan çerez modunu kaydet
+                self.last_working_cookie_mode = attempt['type']
                 title = self.last_info.get('title', 'Bilinmeyen Video')
 
                 # Thumbnail bulma
@@ -552,8 +570,12 @@ class EliteApi:
         else:
             filename_tmpl = f'%(title)s{trim_tag} [{quality}p].%(ext)s'
 
+        # Analiz aşamasında çalışan çerez moduna göre başla (analiz çerezsiz başardıysa çerezsiz indir)
+        force_no_cookies = (getattr(self, 'last_working_cookie_mode', 'none') == 'none')
+
         ydl_opts = self._ydl_opts(
             url=url,
+            force_no_cookies=force_no_cookies,
             outtmpl=os.path.join(path, filename_tmpl),
             progress_hooks=[self._progress_hook],
             ffmpeg_location=ffmpeg_path,
@@ -622,6 +644,19 @@ class EliteApi:
                 err_str = str(e)
                 if "STOP_REQUESTED" in err_str or self.should_stop:
                     break
+
+                # Çerez / DPAPI / Kilit hatası yakalanırsa çerezleri temizleyip hemen doğrudan dene
+                is_cookie_error = any(w in err_str.lower() for w in [
+                    "cookie", "could not copy", "dpapi", "permission denied", "cookieloaderror", "failed to load cookies"
+                ])
+                if is_cookie_error and ('cookiesfrombrowser' in ydl_opts_current or 'cookiefile' in ydl_opts_current):
+                    logging.warning(f"Çerez erişim hatası yakalandı, çerezsiz doğrudan indirmeye geçiliyor: {err_str}")
+                    self._js(f"updateProgress(0, {json.dumps('⚠️ Çerez kilidi aşıldı, doğrudan indiriliyor...')})")
+                    self.last_working_cookie_mode = 'none'
+                    ydl_opts.pop('cookiesfrombrowser', None)
+                    ydl_opts.pop('cookiefile', None)
+                    continue
+
                 is_throttle_or_403 = any(w in err_str for w in ["403", "Forbidden", "THROTTLE", "429", "timed out", "SABR"])
                 if is_throttle_or_403 and attempt < len(clients_pool) - 1:
                     self._js(f"updateProgress(0, {json.dumps('🔄 Hız kısıtı aşıldı, bağlantı tazeleniyor...')})")
@@ -641,7 +676,19 @@ class EliteApi:
         else:
             err_msg = str(last_download_error) if last_download_error else "Bilinmeyen hata"
             logging.error(f"İndirme hatası: {err_msg}\n{traceback.format_exc()}")
-            self._js(f"finishDownload(false, {json.dumps('❌ İndirme Hatası: ' + err_msg[:50])})")
+            
+            # Anlaşılır Türkçe hata mesajı üret
+            if any(w in err_msg.lower() for w in ["login", "private", "giriş", "empty media", "unauthorized"]):
+                user_msg = "❌ Bu içerik gizli veya giriş gerektiriyor. (cookies.txt ekleyin)"
+            elif any(w in err_msg.lower() for w in ["timed out", "timeout", "connection"]):
+                user_msg = "❌ Bağlantı zaman aşımına uğradı. İnternet bağlantınızı kontrol edin."
+            elif "format" in err_msg.lower():
+                user_msg = "❌ İstenen video formatı/kalitesi bulunamadı."
+            else:
+                clean_err = err_msg.replace("ERROR: ", "").strip()
+                user_msg = f"❌ İndirme Hatası: {clean_err[:60]}"
+
+            self._js(f"finishDownload(false, {json.dumps(user_msg)})")
 
         import gc
         gc.collect()
