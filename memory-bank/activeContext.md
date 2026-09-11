@@ -1,4 +1,4 @@
-<!-- last_updated: 2026-09-07 -->
+<!-- last_updated: 2026-09-11 -->
 # ⚡ Active Context / Aktif Bağlam
 
 > **AI Instruction:** Bu dosya, MEVCUT oturum durumunun tek doğru kaynağıdır. Anlık görevleri, aktif tasarım kararlarını, son kod değişikliklerini ve karşılaşılan engelleri takip eder. Her oturum başında okunmalı ve oturum sonunda güncellenmelidir.
@@ -7,9 +7,14 @@
 
 ## 🎯 Şu Anki Odak (Current Focus)
 
-* [x] İlk açılışta pencere sürüklenirken oluşan 5 saniyelik "(Yanıt Vermiyor)" donmasının giderilmesi.
-* [x] Tailwind CSS'in harici CDN'den yerel `tailwind.min.js` dosyasına taşınması (sıfır ağ gecikmesi & offline render).
-* [x] `pywebview` kütüphanesinin `@_shown_call` deadlock hatası nedeniyle `hidden=True` kaldırıldı; anında ve kararlı açılış restore edildi.
+* [x] **Kapsamlı Stabilite ve Performans Düzeltmesi (3 Paralel Denetim Sonrası):**
+  * `_js_lock` ve 0.2s timeout mekanizması kaldırıldı (tüm UI donmaları ve kaybolan mesajlar çözüldü).
+  * `player_skip: ['configs', 'webpage']` yt-dlp ayarlarından tamamen temizlendi (360p takılma sorunu çözüldü; 1080p, 1440p, 4K dahil tüm çözünürlükler geri geldi).
+  * `gc.collect()` manuel çağrıları indirme döngüsünden temizlendi ("stop-the-world" UI duraksamaları yok edildi).
+  * 11 adet fonksiyon içi tekrarlanan gereksiz import dosya başına taşındı.
+  * `index.js` içindeki tüm pywebview API çağrıları try-catch blokları ile zırhlandı.
+  * `renderPlaylistItems` DOM güncellemeleri DocumentFragment ile optimize edildi.
+  * `index.html` içinde Tailwind config yükleme sırası düzeltildi.
 
 ---
 

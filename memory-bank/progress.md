@@ -26,8 +26,12 @@
 *   [x] **Fallow (Codebase Intelligence) Entegrasyonu:** Fallow kod zekası entegrasyonu tamamlandı, Claude Code için `.claude` altındaki `/fallow` komut ve yetenek (skill) şablonları eklendi.
 *   [x] **Temizlik:** Güncelleme sonrasında geçici `vibecoding` ve yeni iletilen `vibecoding_yeni` klasörleri silinerek çalışma alanı temiz tutuldu.
 *   [x] **Instagram ve Sosyal Medya İndirme Desteği:** `cookies.txt` öncelikli kontrolü ile 6 popüler tarayıcı (Firefox, Chrome, Edge, Brave, Opera, Vivaldi) fall-back ve hata yakalama mekanizması eklendi.
-*   [x] **Açılışta Pencere Donması & "(Yanıt Vermiyor)" Giderildi:** Pencere `hidden=True` başlatılıp WebView2/DOM el sıkışması tamamlandığında (`on_loaded`) ekrana veriliyor; 2.5s fallback zamanlayıcı eklendi.
+*   [x] **Açılışta Pencere Donması & "(Yanıt Vermiyor)" Giderildi:** Pencere `hidden=True` kaldırıldı; Tailwind JS yerelleştirildi, pencere anında yükleniyor.
 *   [x] **Tailwind Yerelleştirmesi:** Harici Cloudflare CDN bağımlılığı kaldırılarak `tailwind.min.js` yerel olarak projeye gömüldü; açılış gecikmesi sıfırlandı.
+*   [x] **360p Kısıtlaması & SABR Çözüldü:** `player_skip: ['configs', 'webpage']` kaldırılarak YouTube DASH/SABR formatları tekrar erişilebilir hale getirildi; 1080p-4K formatları tamamen aktif.
+*   [x] **IPC ve Evaluate_JS Deadlock'ı Çözüldü:** `_js_lock` kaldırıldı, asenkron ve güvenli IPC sağlandı.
+*   [x] **GC Stop-the-world Duraksamaları Giderildi:** Manuel `gc.collect()` kaldırıldı.
+*   [x] **Frontend Try-Catch & DOM Optimizasyonu:** `index.js` ve `index.html` zırhlandı.
 
 ### Bekleyen Özellikler (Pending Features) ⏳
 *   [ ] İndirme motorunun kararlılığının son kez test edilmesi (`baslat.bat` üzerinden).
