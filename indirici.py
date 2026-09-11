@@ -10,7 +10,7 @@ if getattr(sys, 'frozen', False):
 
 # PYWEBVIEW_GUI, import webview'den ÖNCE ayarlanmalıdır!
 os.environ['PYWEBVIEW_GUI'] = 'edgechromium'
-os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--disable-gpu-shader-disk-cache --disable-features=RendererCodeIntegrity'
+os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--disable-renderer-accessibility --disable-features=RendererCodeIntegrity'
 
 import webview
 import threading
@@ -79,7 +79,7 @@ class EliteApi:
 
     def _js(self, code):
         """Thread-safe evaluate_js wrapper (pywebview'ın kendi thread-safety'sine güvenir)."""
-        if not self.window or not getattr(self, 'is_ready', False):
+        if not self.window:
             return
         try:
             self.window.evaluate_js(code)
@@ -821,16 +821,7 @@ if __name__ == '__main__':
         with open(html_file, 'r', encoding='utf-8') as f:
             html_content = f.read()
 
-        # Tailwind JS enjekte et (Offline & anında render)
-        tailwind_file = resource_path('tailwind.min.js')
-        if os.path.exists(tailwind_file):
-            with open(tailwind_file, 'r', encoding='utf-8') as f:
-                tw_js = f.read()
-            html_content = html_content.replace('<!-- TAILWIND_PLACEHOLDER -->', f'<script>\n{tw_js}\n</script>')
-        else:
-            html_content = html_content.replace('<!-- TAILWIND_PLACEHOLDER -->', '<script async src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>')
-
-        # CSS enjekte et
+        # CSS enjekte et (Önceden derlenmiş statik Tailwind + özel stiller)
         if os.path.exists(css_file):
             with open(css_file, 'r', encoding='utf-8') as f:
                 css = f.read()
