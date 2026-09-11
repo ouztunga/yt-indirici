@@ -844,6 +844,15 @@ if __name__ == '__main__':
         with open(html_file, 'r', encoding='utf-8') as f:
             html_content = f.read()
 
+        # Tailwind JS enjekte et (Offline & anında render)
+        tailwind_file = resource_path('tailwind.min.js')
+        if os.path.exists(tailwind_file):
+            with open(tailwind_file, 'r', encoding='utf-8') as f:
+                tw_js = f.read()
+            html_content = html_content.replace('<!-- TAILWIND_PLACEHOLDER -->', f'<script>\n{tw_js}\n</script>')
+        else:
+            html_content = html_content.replace('<!-- TAILWIND_PLACEHOLDER -->', '<script async src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>')
+
         # CSS enjekte et
         if os.path.exists(css_file):
             with open(css_file, 'r', encoding='utf-8') as f:
@@ -883,7 +892,7 @@ if __name__ == '__main__':
         with open(temp_html_path, "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        # Pencere oluştur (url üzerinden yükleme IPC kilitlenmesini önler)
+        # Pencere oluştur (hidden=True: WebView2 ve DOM tam yüklenip IPC oturana kadar pencere gizli başlar)
         window = webview.create_window(
             title=f'İndirici v{__version__}',
             url=f"file:///{temp_html_path.replace('\\', '/')}",
@@ -893,14 +902,34 @@ if __name__ == '__main__':
             resizable=True,
             min_size=(900, 600),
             background_color='#131313',
+            hidden=True,
         )
         api.window = window     # API'ye pencere referansı ver
 
-        # DOM ve Window tam yüklendiğinde is_ready flag'ini aktif et
+        # DOM ve Window tam yüklendiğinde pencereyi göster ve is_ready flag'ini aktif et
+        shown_lock = threading.Lock()
+        is_shown = False
+
+        def show_window():
+            global is_shown
+            with shown_lock:
+                if not is_shown:
+                    is_shown = True
+                    api.is_ready = True
+                    window.show()
+
         def on_loaded():
-            api.is_ready = True
+            show_window()
 
         window.events.loaded += on_loaded
+
+        # Güvenlik önlemi: Herhangi bir nedenden dolayı loaded gecikirse en geç 2.5 sn içinde pencereyi göster
+        def fallback_timer():
+            import time
+            time.sleep(2.5)
+            show_window()
+
+        threading.Thread(target=fallback_timer, daemon=True).start()
 
         # gui='edgechromium' argümanı çıkarıldı (ortam değişkeninden alınır, çakışmayı önler)
         webview.start(debug=False)
