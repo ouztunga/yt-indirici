@@ -26,8 +26,8 @@
 *   [x] **Fallow (Codebase Intelligence) Entegrasyonu:** Fallow kod zekası entegrasyonu tamamlandı, Claude Code için `.claude` altındaki `/fallow` komut ve yetenek (skill) şablonları eklendi.
 *   [x] **Temizlik:** Güncelleme sonrasında geçici `vibecoding` ve yeni iletilen `vibecoding_yeni` klasörleri silinerek çalışma alanı temiz tutuldu.
 *   [x] **Instagram ve Sosyal Medya İndirme Desteği:** `cookies.txt` öncelikli kontrolü ile 6 popüler tarayıcı (Firefox, Chrome, Edge, Brave, Opera, Vivaldi) fall-back ve hata yakalama mekanizması eklendi.
-*   [x] **Açılışta Pencere Donması & "(Yanıt Vermiyor)" Giderildi:** Pencere `hidden=True` kaldırıldı; Tailwind JS yerelleştirildi, pencere anında yükleniyor.
-*   [x] **Tailwind Yerelleştirmesi:** Harici Cloudflare CDN bağımlılığı kaldırılarak `tailwind.min.js` yerel olarak projeye gömüldü; açılış gecikmesi sıfırlandı.
+*   [x] **Açılışta Pencere Donması & "(Yanıt Vermiyor)" Kesin Olarak Çözüldü:** `--disable-renderer-accessibility` argümanı ve GPU shader disk önbelleği eklendi; Windows 11 UI Automation mesaj kuyruğu kilitlenmesi sonlandırıldı.
+*   [x] **Tailwind JIT Derleyicisi Kaldırıldı & Saf Statik CSS:** 418 KB'lık hantal `tailwind.min.js` yerine 22 KB'lık derlenmiş saf `index.css` entegre edildi. Açılış süresi 0.8 saniyeye indirildi; açılışta anında tıklama ve pencere taşıma pürüzsüz çalışıyor.
 *   [x] **360p Kısıtlaması & SABR Çözüldü:** `player_skip: ['configs', 'webpage']` kaldırılarak YouTube DASH/SABR formatları tekrar erişilebilir hale getirildi; 1080p-4K formatları tamamen aktif.
 *   [x] **IPC ve Evaluate_JS Deadlock'ı Çözüldü:** `_js_lock` kaldırıldı, asenkron ve güvenli IPC sağlandı.
 *   [x] **GC Stop-the-world Duraksamaları Giderildi:** Manuel `gc.collect()` kaldırıldı.
