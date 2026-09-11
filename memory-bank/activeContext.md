@@ -7,11 +7,9 @@
 
 ## 🎯 Şu Anki Odak (Current Focus)
 
-* [x] Edge/Chrome kilitli çerez hatasının (`Could not copy Chrome cookie database`) giderilmesi.
-* [x] Instagram, TikTok, YouTube ve Twitter için çerezsiz öncelikli analiz ve indirme fallback'i eklenmesi.
-* [x] `yt-dlp` sürümünün en güncel sürüme yükseltilmesi.
-* [x] EXE mimarisinin sonlandırılması ve doğrudan `baslat.bat` / `baslat.vbs` (Pythonw) hafif çalışma modeline geçilmesi.
-* [x] `indirici.exe` ve PyInstaller derleme artıklarının güvenle temizlenmesi.
+* [x] İlk açılışta pencere sürüklenirken oluşan 5 saniyelik "(Yanıt Vermiyor)" donmasının giderilmesi.
+* [x] Tailwind CSS'in harici CDN'den yerel `tailwind.min.js` dosyasına taşınması (sıfır ağ gecikmesi & offline render).
+* [x] Pencerenin WebView2 ve DOM tam hazır olana kadar `hidden=True` başlayıp `on_loaded` ile ekrana getirilmesi.
 
 ---
 
