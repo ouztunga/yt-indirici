@@ -9,7 +9,7 @@
 
 * [x] İlk açılışta pencere sürüklenirken oluşan 5 saniyelik "(Yanıt Vermiyor)" donmasının giderilmesi.
 * [x] Tailwind CSS'in harici CDN'den yerel `tailwind.min.js` dosyasına taşınması (sıfır ağ gecikmesi & offline render).
-* [x] Pencerenin WebView2 ve DOM tam hazır olana kadar `hidden=True` başlayıp `on_loaded` ile ekrana getirilmesi.
+* [x] `pywebview` kütüphanesinin `@_shown_call` deadlock hatası nedeniyle `hidden=True` kaldırıldı; anında ve kararlı açılış restore edildi.
 
 ---
 
