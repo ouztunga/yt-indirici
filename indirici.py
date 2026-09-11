@@ -18,6 +18,10 @@ import logging
 import traceback
 import base64
 import json
+import time
+import subprocess
+import yt_dlp
+from yt_dlp.utils import download_range_func
 from concurrent.futures import ThreadPoolExecutor
 
 __version__ = "1.3.0"
@@ -54,7 +58,6 @@ class EliteApi:
     """pywebview JS API — tüm backend mantığı burada."""
 
     def __init__(self):
-        import time
         self.base_path = os.path.dirname(os.path.realpath(
             sys.executable if getattr(sys, 'frozen', False) else __file__
         ))
@@ -65,7 +68,6 @@ class EliteApi:
         self.should_stop = False    # İndirme durdurma flag'i
         self.pause_event = threading.Event()
         self.pause_event.set()      # Başlangıçta duraklatılmamış
-        self._js_lock = threading.Lock()  # evaluate_js deadlock kilidi
         self._last_progress_time = 0      # UI throttling zaman damgası
         self.last_downloaded_path = None  # En son indirilen (playlist alt klasörü dahil) yol
         self._current_analyze_id = 0      # İptal kontrolü için analiz ID'si
@@ -76,17 +78,13 @@ class EliteApi:
     # ═══════════════════════════════════════════════════════════
 
     def _js(self, code):
-        """Thread-safe evaluate_js wrapper (Deadlock korumalı, timeout'lu ve ready-checked)."""
+        """Thread-safe evaluate_js wrapper (pywebview'ın kendi thread-safety'sine güvenir)."""
         if not self.window or not getattr(self, 'is_ready', False):
             return
         try:
-            if self._js_lock.acquire(timeout=0.2):
-                try:
-                    self.window.evaluate_js(code)
-                finally:
-                    self._js_lock.release()
-        except Exception:
-            pass
+            self.window.evaluate_js(code)
+        except Exception as e:
+            logging.debug(f"JS eval hatası: {e}")
 
     def _find_cookie_source(self):
         """Öncelikle local cookies.txt var mı bak, yoksa okunabilir ve kilitli olmayan tarayıcı çerezlerini tara."""
@@ -146,12 +144,6 @@ class EliteApi:
             'retries': 10,
             'fragment_retries': 10,
             'cachedir': False,                   # Bayat n-token cache'ini önler
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web', 'ios', 'mweb'],
-                    'player_skip': ['configs', 'webpage'],
-                }
-            },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -338,7 +330,6 @@ class EliteApi:
                 else:
                     ydl_opts = self._ydl_opts(url=url, force_no_cookies=True, noplaylist=not is_playlist, extract_flat='in_playlist' if is_playlist else False, lazy_playlist=True)
 
-                import yt_dlp
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=False)
                     if analyze_id != self._current_analyze_id:
@@ -443,7 +434,6 @@ class EliteApi:
 
             try:
                 video_url = entry.get('url') or entry.get('webpage_url') or f"https://www.youtube.com/watch?v={video_id}"
-                import yt_dlp
                 with yt_dlp.YoutubeDL(self._ydl_opts(url=video_url)) as ydl:
                     info = ydl.extract_info(video_url, download=False)
                     if info:
@@ -539,7 +529,6 @@ class EliteApi:
         is_playlist = 'list=' in url
         if is_playlist:
             try:
-                import yt_dlp
                 with yt_dlp.YoutubeDL(self._ydl_opts(url=url, extract_flat=True)) as ydl:
                     pl_info = ydl.extract_info(url, download=False)
                     pl_title = pl_info.get('title', 'Playlist')
@@ -587,7 +576,6 @@ class EliteApi:
         )
 
         if has_trim:
-            from yt_dlp.utils import download_range_func
             s_val = start_sec if start_sec is not None else 0
             e_val = end_sec if end_sec is not None else float('inf')
             ydl_opts['download_ranges'] = download_range_func(None, [(s_val, e_val)])
@@ -613,9 +601,8 @@ class EliteApi:
             })
 
         clients_pool = [
-            ['android', 'web'],
-            ['ios', 'web'],
-            ['mweb', 'android'],
+            None,             # 1. Öncelik: yt-dlp akıllı varsayılanı (tüm formatlar ve DASH açık)
+            ['web', 'mweb'],  # 2. Alternatif: Web istemcileri
         ]
 
         success = False
@@ -626,15 +613,14 @@ class EliteApi:
                 break
 
             ydl_opts_current = dict(ydl_opts)
-            ydl_opts_current['extractor_args'] = {
-                'youtube': {
-                    'player_client': client_list,
-                    'player_skip': ['configs', 'webpage'],
+            if client_list:
+                ydl_opts_current['extractor_args'] = {
+                    'youtube': {
+                        'player_client': client_list,
+                    }
                 }
-            }
 
             try:
-                import yt_dlp
                 with yt_dlp.YoutubeDL(ydl_opts_current) as ydl:
                     ydl.download([url])
                 success = True
@@ -660,14 +646,12 @@ class EliteApi:
                 is_throttle_or_403 = any(w in err_str for w in ["403", "Forbidden", "THROTTLE", "429", "timed out", "SABR"])
                 if is_throttle_or_403 and attempt < len(clients_pool) - 1:
                     self._js(f"updateProgress(0, {json.dumps('🔄 Hız kısıtı aşıldı, bağlantı tazeleniyor...')})")
-                    import time
                     time.sleep(1)
                     continue
                 else:
                     break
             finally:
-                import gc
-                gc.collect()
+                pass
 
         if self.should_stop:
             self._js(f"finishDownload(false, {json.dumps('⚠️ İptal edildi.')})")
@@ -690,9 +674,6 @@ class EliteApi:
 
             self._js(f"finishDownload(false, {json.dumps(user_msg)})")
 
-        import gc
-        gc.collect()
-
     def _progress_hook(self, d):
         """yt-dlp ilerleme hook'u — duraklatma ve durdurma kontrolü yapar."""
         # Duraklatma
@@ -700,7 +681,6 @@ class EliteApi:
 
         # Durdurma
         if self.should_stop:
-            import yt_dlp
             raise yt_dlp.utils.DownloadCancelled("STOP_REQUESTED")
 
         if d['status'] != 'downloading' or not self.window:
@@ -715,7 +695,6 @@ class EliteApi:
             percent = (downloaded / total) * 100
 
             # Saniyede maksimum 3 kez UI güncelle (IPC ve WebView2 kilitlenmelerini önler)
-            import time
             now = time.time()
             if now - self._last_progress_time < 0.3 and percent < 100:
                 return
@@ -772,7 +751,6 @@ class EliteApi:
             if os.name == 'nt':
                 os.startfile(target_path)
             else:
-                import subprocess
                 opener = "open" if sys.platform == "darwin" else "xdg-open"
                 subprocess.Popen([opener, target_path])
         except Exception as e:
@@ -792,7 +770,6 @@ class EliteApi:
             return False    # Resumed
 
     def restart_app(self):
-        import subprocess
         if self.window:
             try:
                 self.window.destroy()

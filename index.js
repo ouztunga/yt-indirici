@@ -51,7 +51,13 @@ function autoAnalyze(url) {
     analyzeTimeout = setTimeout(() => {
         document.getElementById('inputLoader').classList.remove('hidden');
         if (window.pywebview && window.pywebview.api) {
-            pywebview.api.analyze(url, currentQuality);
+            try {
+                pywebview.api.analyze(url, currentQuality);
+            } catch (err) {
+                console.error("Analiz çağrısı hatası:", err);
+                document.getElementById('inputLoader').classList.add('hidden');
+                document.getElementById('statusText').innerText = "Analiz başlatılamadı: " + (err.message || err);
+            }
         }
     }, 1000);
 }
@@ -245,13 +251,17 @@ function toggleTrimInputs() {
 
 async function browseFolder() {
     if (window.pywebview && window.pywebview.api) {
-        const path = await pywebview.api.browse();
-        if (path) {
-            const display = document.getElementById('pathDisplay');
-            if (display) {
-                display.innerText = path;
-                display.title = path;
+        try {
+            const path = await pywebview.api.browse();
+            if (path) {
+                const display = document.getElementById('pathDisplay');
+                if (display) {
+                    display.innerText = path;
+                    display.title = path;
+                }
             }
+        } catch (err) {
+            console.error("Klasör seçme hatası:", err);
         }
     }
 }
@@ -269,27 +279,44 @@ function startDownload() {
     document.getElementById('activeControls').classList.remove('hidden');
     document.getElementById('statusText').innerText = "İndirme motoru başlatılıyor...";
 
-    pywebview.api.download(url, currentQuality, path, currentFormat, startTime, endTime);
+    try {
+        if (window.pywebview && window.pywebview.api) {
+            pywebview.api.download(url, currentQuality, path, currentFormat, startTime, endTime);
+        }
+    } catch (err) {
+        console.error("İndirme başlatma hatası:", err);
+        finishDownload(false, "İndirme başlatılamadı: " + (err.message || err));
+    }
 }
 
 async function togglePause() {
-    const isPaused = await pywebview.api.toggle_pause();
-    const pauseIcon = document.getElementById('pauseIcon');
-    const pauseText = document.getElementById('pauseText');
+    try {
+        if (window.pywebview && window.pywebview.api) {
+            const isPaused = await pywebview.api.toggle_pause();
+            const pauseIcon = document.getElementById('pauseIcon');
+            const pauseText = document.getElementById('pauseText');
 
-    if (isPaused) {
-        pauseIcon.innerText = "play_arrow";
-        pauseText.innerText = "DEVAM ET";
-        document.getElementById('statusText').innerText = "Duraklatıldı";
-    } else {
-        pauseIcon.innerText = "pause";
-        pauseText.innerText = "DURAKLAT";
+            if (isPaused) {
+                pauseIcon.innerText = "play_arrow";
+                pauseText.innerText = "DEVAM ET";
+                document.getElementById('statusText').innerText = "Duraklatıldı";
+            } else {
+                pauseIcon.innerText = "pause";
+                pauseText.innerText = "DURAKLAT";
+            }
+        }
+    } catch (err) {
+        console.error("Duraklatma hatası:", err);
     }
 }
 
 function stopDownload() {
     if (window.pywebview && window.pywebview.api) {
-        pywebview.api.stop_download();
+        try {
+            pywebview.api.stop_download();
+        } catch (err) {
+            console.error("Durdurma hatası:", err);
+        }
     }
     document.getElementById('statusText').innerText = "İptal ediliyor...";
     isDownloading = false;
@@ -359,7 +386,11 @@ function finishDownload(success, message) {
 function openDownloadFolder() {
     const path = document.getElementById('pathDisplay').innerText;
     if (window.pywebview && window.pywebview.api) {
-        pywebview.api.open_download_folder(path);
+        try {
+            pywebview.api.open_download_folder(path);
+        } catch (err) {
+            console.error("Klasör açma hatası:", err);
+        }
     }
 }
 
@@ -377,10 +408,10 @@ function updatePlaylistItemSize(index, sizes) {
 function renderPlaylistItems() {
     const container = document.getElementById('playlistItems');
     if (!container) return;
-    container.innerHTML = "";
 
     let totalSize = 0;
     let allLoaded = true;
+    const fragment = document.createDocumentFragment();
 
     playlistEntries.forEach((entry, idx) => {
         let sizeStr = "Hesaplanıyor...";
@@ -419,8 +450,11 @@ function renderPlaylistItems() {
 
         itemDiv.appendChild(infoContainer);
         itemDiv.appendChild(sizeSpan);
-        container.appendChild(itemDiv);
+        fragment.appendChild(itemDiv);
     });
+
+    container.innerHTML = "";
+    container.appendChild(fragment);
 
     const totalText = allLoaded ? `${totalSize.toFixed(1)} MB` : "Hesaplanıyor...";
     document.getElementById('playlistTotalSize').innerText = totalText;
