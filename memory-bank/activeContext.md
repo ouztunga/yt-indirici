@@ -7,19 +7,12 @@
 
 ## 🎯 Şu Anki Odak (Current Focus)
 
-* [x] **Açılışta Donma ve "(Yanıt Vermiyor)" Hatasının Kesin Çözümü:**
-  * Windows 11 UI Automation mesaj kuyruğu kilitlenmesini önlemek için `--disable-renderer-accessibility` argümanı eklendi.
-  * GPU shader'larının her açılışta sıfırdan derlenmesini engelleyip diskte önbelleğe alınması için `--disable-gpu-shader-disk-cache` kaldırıldı.
-  * 418 KB'lık hantal `tailwind.min.js` JIT derleyicisi tamamen kaldırılarak 22 KB'lık derlenmiş saf CSS (`index.css`) yapısına geçildi (HTML boyutu 805 KB'tan 392 KB'a indi).
-  * `_js()` içindeki gereksiz `is_ready` kısıtı kaldırıldı, doğrudan pywebview'ın iç senkronizasyonuna devredildi.
-  * Windows `IsHungAppWindow` API'si ile test edildi; uygulama açılış süresi 0.80 saniyeye düştü ve açılış anında tıklama/sürükleme sırasında sıfır takılma sağlandı.
-* [x] **Kapsamlı Stabilite ve Performans Düzeltmesi (3 Paralel Denetim Sonrası):**
-  * `_js_lock` ve 0.2s timeout mekanizması kaldırıldı (tüm UI donmaları ve kaybolan mesajlar çözüldü).
-  * `player_skip: ['configs', 'webpage']` yt-dlp ayarlarından tamamen temizlendi (360p takılma sorunu çözüldü; 1080p, 1440p, 4K dahil tüm çözünürlükler geri geldi).
-  * `gc.collect()` manuel çağrıları indirme döngüsünden temizlendi ("stop-the-world" UI duraksamaları yok edildi).
-  * 11 adet fonksiyon içi tekrarlanan gereksiz import dosya başına taşındı.
-  * `index.js` içindeki tüm pywebview API çağrıları try-catch blokları ile zırhlandı.
-  * `renderPlaylistItems` DOM güncellemeleri DocumentFragment ile optimize edildi.
+* [x] **Windows "(Yanıt Vermiyor)" IPC Deadlock Sorununun Kesin Çözümü (PUSH → PULL Hibrit Mimarisi):**
+  * Tüm worker thread'lerden (`_analyze_thread`, `_download_thread`, `_progress_hook`) Windows Forms/COM mesaj kuyruğunu kilitleyen `window.evaluate_js()` çağrıları tamamen kaldırıldı.
+  * Thread-safe merkezi state dictionary (`threading.Lock`) ve monotonik `version` takip mekanizması kuruldu (Asistan A).
+  * Frontend tarafında (`index.js`), IPC çakışmalarını önleyen **recursive `setTimeout`** (~250ms) tabanlı `poll()` mekanizması kuruldu; sadece versiyon değiştiğinde DOM güncellenerek %100 akıcılık sağlandı (Asistan A).
+  * Program boştayken gereksiz CPU tüketimini önleyen **Akıllı Polling Uyku Modu** ve `on_closing` temiz thread sonlandırma hook'u entegre edildi (Asistan B).
+  * Mevcut modern Bento Grid koyu tema tasarımı, 8K-1080p çözünürlük butonları, zaman kesme (trim) ve Premiere Pro H264/AAC postprocessor motoru eksiksiz korundu.
 
 ---
 

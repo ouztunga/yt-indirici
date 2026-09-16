@@ -68,23 +68,57 @@ class EliteApi:
         self.should_stop = False    # İndirme durdurma flag'i
         self.pause_event = threading.Event()
         self.pause_event.set()      # Başlangıçta duraklatılmamış
+        self._cancel_event = threading.Event()  # Temiz iptal eventi
+        self._lock = threading.Lock()           # Thread-safe state kilidi
         self._last_progress_time = 0      # UI throttling zaman damgası
-        self.last_downloaded_path = None  # En son indirilen (playlist alt klasörü dahil) yol
+        self.last_downloaded_path = None  # En son indirilen yol
         self._current_analyze_id = 0      # İptal kontrolü için analiz ID'si
-        self.last_working_cookie_mode = 'none'  # En son çalışan çerez modu ('none', 'file', 'browser')
+        self.last_working_cookie_mode = 'none'
+
+        # ─────────────────────────────────────────────────────────
+        # MERKEZİ THREAD-SAFE STATE (PULL / POLLING MİMARİSİ)
+        # ─────────────────────────────────────────────────────────
+        self._state = {
+            "version": 0,           # Monotonik version sayacı (Asistan A)
+            "status": "idle",       # idle | analyzing | downloading | done | error
+            "is_busy": False,
+            "video_info": None,
+            "playlist_updates": {},
+            "progress": {
+                "percent": 0,
+                "text": "Sistem Durumu: Çalışıyor",
+                "pl_index": None,
+                "pl_total": None
+            },
+            "finish": None,
+            "is_paused": False,
+        }
 
     # ═══════════════════════════════════════════════════════════
-    #  YARDIMCI METOTLAR
+    #  YARDIMCI METOTLAR VE STATE YÖNETİMİ
     # ═══════════════════════════════════════════════════════════
+
+    def _update_state(self, updates: dict):
+        """Thread-safe state güncelleme. evaluate_js ÇAĞIRMAZ (0 Win32/COM Deadlock)."""
+        with self._lock:
+            for k, v in updates.items():
+                if isinstance(v, dict) and isinstance(self._state.get(k), dict):
+                    self._state[k].update(v)
+                else:
+                    self._state[k] = v
+            self._state["version"] += 1
+
+    def get_state(self):
+        """Frontend'in her ~250ms'de çağırdığı POLLING ENDPOINT (PULL)."""
+        with self._lock:
+            state_copy = json.loads(json.dumps(self._state))
+            if self._state.get("playlist_updates"):
+                self._state["playlist_updates"] = {}
+            return state_copy
 
     def _js(self, code):
-        """Thread-safe evaluate_js wrapper (pywebview'ın kendi thread-safety'sine güvenir)."""
-        if not self.window:
-            return
-        try:
-            self.window.evaluate_js(code)
-        except Exception as e:
-            logging.debug(f"JS eval hatası: {e}")
+        """Geriye dönük uyumluluk için güvenli wrapper — PULL mimarisinde artık kullanılmaz."""
+        pass
 
     def _find_cookie_source(self):
         """Öncelikle local cookies.txt var mı bak, yoksa okunabilir ve kilitli olmayan tarayıcı çerezlerini tara."""
@@ -288,6 +322,12 @@ class EliteApi:
         """JS'den çağrılır — arka plan thread'inde analiz başlatır."""
         if not url or url.strip() == "":
             self.last_info = None
+            self._update_state({
+                "status": "idle",
+                "is_busy": False,
+                "video_info": None,
+                "progress": {"percent": 0, "text": "Sistem Durumu: Çalışıyor", "pl_index": None, "pl_total": None}
+            })
             return
             
         original_url = url
@@ -297,6 +337,19 @@ class EliteApi:
 
         self._current_analyze_id += 1
         current_id = self._current_analyze_id
+
+        self._update_state({
+            "status": "analyzing",
+            "is_busy": True,
+            "finish": None,
+            "progress": {
+                "percent": 0,
+                "text": "Video verileri analiz ediliyor...",
+                "pl_index": None,
+                "pl_total": None
+            }
+        })
+
         threading.Thread(target=self._analyze_thread, args=(url, current_id, original_url), daemon=True).start()
 
     def _analyze_thread(self, url, analyze_id, original_url=None):
@@ -383,13 +436,25 @@ class EliteApi:
                 if analyze_id != self._current_analyze_id:
                     return
 
-                # Frontend'e gönder
-                self._js(
-                    f"updateUI({json.dumps(title)}, {json.dumps(thumb)}, "
-                    f"{json.dumps(all_sizes)}, {json.dumps(original_url or url)}, "
-                    f"{json.dumps(playlist_entries)}, {max_height})"
-                )
-                self._js(f"updateProgress(0, {json.dumps('✅ Video analiz edildi. İndirmeye hazır.')})")
+                # State güncelle (PULL mimarisi — evaluate_js YOK)
+                self._update_state({
+                    "status": "idle",
+                    "is_busy": False,
+                    "video_info": {
+                        "title": title,
+                        "img_url": thumb,
+                        "sizes": all_sizes,
+                        "source_url": original_url or url,
+                        "playlist_entries": playlist_entries,
+                        "max_height": max_height
+                    },
+                    "progress": {
+                        "percent": 0,
+                        "text": "✅ Video analiz edildi. İndirmeye hazır.",
+                        "pl_index": None,
+                        "pl_total": None
+                    }
+                })
 
                 # Playlist ise arka planda detay çek
                 if is_playlist and playlist_entries:
@@ -416,7 +481,17 @@ class EliteApi:
             msg = "❌ Instagram videosu indirilemedi. Çözüm: Uygulama klasörüne 'cookies.txt' dosyası ekleyin veya açık tarayıcıları kapatın."
         else:
             msg = "❌ Hata: Video bulunamadı veya link geçersiz!"
-        self._js(f"updateProgress(0, {json.dumps(msg)})")
+
+        self._update_state({
+            "status": "error",
+            "is_busy": False,
+            "progress": {
+                "percent": 0,
+                "text": msg,
+                "pl_index": None,
+                "pl_total": None
+            }
+        })
 
     # ─── Playlist arka plan detayları ─────────────────────────
 
@@ -424,7 +499,7 @@ class EliteApi:
         """Her playlist videosunun boyut bilgilerini arka planda hesapla."""
 
         def fetch_one(idx, entry):
-            if self.should_stop or not self.window:
+            if self.should_stop or self._cancel_event.is_set():
                 return
             video_id = entry.get('id')
             if not video_id:
@@ -438,14 +513,22 @@ class EliteApi:
                     info = ydl.extract_info(video_url, download=False)
                     if info:
                         sizes = self._calc_all_sizes(info)
-                        self._js(f"updatePlaylistItemSize({idx}, {json.dumps(sizes)})")
+                        with self._lock:
+                            if "playlist_updates" not in self._state:
+                                self._state["playlist_updates"] = {}
+                            self._state["playlist_updates"][str(idx)] = sizes
+                            self._state["version"] += 1
                         return
             except Exception as e:
                 logging.error(f"Playlist video analiz hatası ({video_id}): {e}")
 
             # Hata durumunda fallback
             sizes = {q: "Bilinmiyor" for q in qualities}
-            self._js(f"updatePlaylistItemSize({idx}, {json.dumps(sizes)})")
+            with self._lock:
+                if "playlist_updates" not in self._state:
+                    self._state["playlist_updates"] = {}
+                self._state["playlist_updates"][str(idx)] = sizes
+                self._state["version"] += 1
 
         try:
             with ThreadPoolExecutor(max_workers=3) as executor:
@@ -515,7 +598,21 @@ class EliteApi:
         if not path or not path.strip():
             path = self.download_path
         self.should_stop = False
+        self._cancel_event.clear()
         self.pause_event.set()
+
+        self._update_state({
+            "status": "downloading",
+            "is_busy": True,
+            "finish": None,
+            "progress": {
+                "percent": 0,
+                "text": "İndirme motoru başlatılıyor...",
+                "pl_index": None,
+                "pl_total": None
+            }
+        })
+
         threading.Thread(
             target=self._download_thread,
             args=(url, quality, path, start_time, end_time),
@@ -609,7 +706,7 @@ class EliteApi:
         last_download_error = None
 
         for attempt, client_list in enumerate(clients_pool):
-            if self.should_stop:
+            if self.should_stop or self._cancel_event.is_set():
                 break
 
             ydl_opts_current = dict(ydl_opts)
@@ -628,7 +725,7 @@ class EliteApi:
             except Exception as e:
                 last_download_error = e
                 err_str = str(e)
-                if "STOP_REQUESTED" in err_str or self.should_stop:
+                if "STOP_REQUESTED" in err_str or self.should_stop or self._cancel_event.is_set():
                     break
 
                 # Çerez / DPAPI / Kilit hatası yakalanırsa çerezleri temizleyip hemen doğrudan dene
@@ -637,7 +734,12 @@ class EliteApi:
                 ])
                 if is_cookie_error and ('cookiesfrombrowser' in ydl_opts_current or 'cookiefile' in ydl_opts_current):
                     logging.warning(f"Çerez erişim hatası yakalandı, çerezsiz doğrudan indirmeye geçiliyor: {err_str}")
-                    self._js(f"updateProgress(0, {json.dumps('⚠️ Çerez kilidi aşıldı, doğrudan indiriliyor...')})")
+                    self._update_state({
+                        "progress": {
+                            "percent": 0,
+                            "text": "⚠️ Çerez kilidi aşıldı, doğrudan indiriliyor..."
+                        }
+                    })
                     self.last_working_cookie_mode = 'none'
                     ydl_opts.pop('cookiesfrombrowser', None)
                     ydl_opts.pop('cookiefile', None)
@@ -645,7 +747,12 @@ class EliteApi:
 
                 is_throttle_or_403 = any(w in err_str for w in ["403", "Forbidden", "THROTTLE", "429", "timed out", "SABR"])
                 if is_throttle_or_403 and attempt < len(clients_pool) - 1:
-                    self._js(f"updateProgress(0, {json.dumps('🔄 Hız kısıtı aşıldı, bağlantı tazeleniyor...')})")
+                    self._update_state({
+                        "progress": {
+                            "percent": 0,
+                            "text": "🔄 Hız kısıtı aşıldı, bağlantı tazeleniyor..."
+                        }
+                    })
                     time.sleep(1)
                     continue
                 else:
@@ -653,10 +760,20 @@ class EliteApi:
             finally:
                 pass
 
-        if self.should_stop:
-            self._js(f"finishDownload(false, {json.dumps('⚠️ İptal edildi.')})")
+        if self.should_stop or self._cancel_event.is_set():
+            self._update_state({
+                "status": "idle",
+                "is_busy": False,
+                "finish": {"success": False, "message": "⚠️ İptal edildi."},
+                "progress": {"percent": 0, "text": "⚠️ İptal edildi.", "pl_index": None, "pl_total": None}
+            })
         elif success:
-            self._js(f"finishDownload(true, {json.dumps('✅ İndirme Başarıyla Tamamlandı!')})")
+            self._update_state({
+                "status": "done",
+                "is_busy": False,
+                "finish": {"success": True, "message": "✅ İndirme Başarıyla Tamamlandı!"},
+                "progress": {"percent": 100, "text": "✅ İndirme Başarıyla Tamamlandı!", "pl_index": None, "pl_total": None}
+            })
         else:
             err_msg = str(last_download_error) if last_download_error else "Bilinmeyen hata"
             logging.error(f"İndirme hatası: {err_msg}\n{traceback.format_exc()}")
@@ -672,18 +789,23 @@ class EliteApi:
                 clean_err = err_msg.replace("ERROR: ", "").strip()
                 user_msg = f"❌ İndirme Hatası: {clean_err[:60]}"
 
-            self._js(f"finishDownload(false, {json.dumps(user_msg)})")
+            self._update_state({
+                "status": "error",
+                "is_busy": False,
+                "finish": {"success": False, "message": user_msg},
+                "progress": {"percent": 0, "text": user_msg, "pl_index": None, "pl_total": None}
+            })
 
     def _progress_hook(self, d):
-        """yt-dlp ilerleme hook'u — duraklatma ve durdurma kontrolü yapar."""
+        """yt-dlp ilerleme hook'u — duraklatma ve durdurma kontrolü yapar (PULL — evaluate_js YOK)."""
         # Duraklatma
         self.pause_event.wait()
 
-        # Durdurma
-        if self.should_stop:
+        # Durdurma / İptal
+        if self.should_stop or self._cancel_event.is_set():
             raise yt_dlp.utils.DownloadCancelled("STOP_REQUESTED")
 
-        if d['status'] != 'downloading' or not self.window:
+        if d['status'] != 'downloading':
             return
 
         try:
@@ -694,9 +816,9 @@ class EliteApi:
 
             percent = (downloaded / total) * 100
 
-            # Saniyede maksimum 3 kez UI güncelle (IPC ve WebView2 kilitlenmelerini önler)
+            # UI throttling (saniyede ~4 kez state güncelle)
             now = time.time()
-            if now - self._last_progress_time < 0.3 and percent < 100:
+            if now - self._last_progress_time < 0.25 and percent < 100:
                 return
             self._last_progress_time = now
 
@@ -725,13 +847,15 @@ class EliteApi:
 
             status = f"İndiriliyor: %{int(percent)}{speed_str}{eta_str}"
 
-            if pl_index is not None and pl_total is not None:
-                self._js(
-                    f"updateProgress({percent}, {json.dumps(status)}, "
-                    f"{int(pl_index)}, {int(pl_total)})"
-                )
-            else:
-                self._js(f"updateProgress({percent}, {json.dumps(status)})")
+            # Sadece Python dict'ine yaz — evaluate_js ÇAĞIRMAZ (0 deadlock)
+            self._update_state({
+                "progress": {
+                    "percent": percent,
+                    "text": status,
+                    "pl_index": pl_index,
+                    "pl_total": pl_total
+                }
+            })
         except Exception:
             pass
 
@@ -756,17 +880,30 @@ class EliteApi:
         except Exception as e:
             logging.error(f"Klasör açılırken hata: {e}")
 
-
     def stop_download(self):
         self.should_stop = True
+        self._cancel_event.set()
         self.pause_event.set()   # Beklemedeyse çıkar
+        self._update_state({
+            "status": "idle",
+            "is_busy": False,
+            "finish": {"success": False, "message": "⚠️ İptal ediliyor..."},
+            "progress": {"percent": 0, "text": "İptal ediliyor...", "pl_index": None, "pl_total": None}
+        })
 
     def toggle_pause(self):
         if self.pause_event.is_set():
             self.pause_event.clear()
+            self._update_state({
+                "is_paused": True,
+                "progress": {"text": "Duraklatıldı"}
+            })
             return True     # Paused
         else:
             self.pause_event.set()
+            self._update_state({
+                "is_paused": False
+            })
             return False    # Resumed
 
     def restart_app(self):
@@ -878,6 +1015,14 @@ if __name__ == '__main__':
             api.is_ready = True
 
         window.events.loaded += on_loaded
+
+        # Pencere kapatıldığında arka plandaki tüm thread'leri güvenle durdur (Asistan B)
+        def on_closing():
+            api.should_stop = True
+            api._cancel_event.set()
+            api.pause_event.set()
+
+        window.events.closing += on_closing
 
         # gui='edgechromium' argümanı çıkarıldı (ortam değişkeninden alınır, çakışmayı önler)
         webview.start(debug=False)

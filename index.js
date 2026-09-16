@@ -9,6 +9,118 @@ let playlistEntries = [];
 let allSizes = {};          // Tüm çözünürlüklerin boyutları (Python'dan gelir)
 
 // ═══════════════════════════════════════════════════════════
+//  PULL / POLLING MOTORU (Windows Deadlock & Freeze Çözümü)
+// ═══════════════════════════════════════════════════════════
+
+const POLL_INTERVAL_MS = 250;   // Saniyede 4 kez (Asistan A güvenli aralık)
+let _pollTimer = null;
+let _lastVersion = -1;
+let _isPolling = false;
+let _lastRenderedVideoUrl = "";
+let _lastFinishVersion = -1;
+
+function startPolling() {
+    if (_isPolling) return;
+    _isPolling = true;
+    poll();
+}
+
+function stopPolling() {
+    _isPolling = false;
+    if (_pollTimer) {
+        clearTimeout(_pollTimer);
+        _pollTimer = null;
+    }
+}
+
+async function poll() {
+    if (!_isPolling) return;
+    try {
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.get_state) {
+            const state = await window.pywebview.api.get_state();
+            if (state && state.version !== _lastVersion) {
+                _lastVersion = state.version;
+                renderState(state);
+            }
+
+            // Akıllı Polling Uyku Modu (Asistan B mantığı):
+            // Eğer durum "idle", "done" veya "error" ise ve backend meşgul değilse 1.5 sn sonra polling'i durdur
+            if (state && !state.is_busy && (state.status === "idle" || state.status === "done" || state.status === "error")) {
+                _pollTimer = setTimeout(() => {
+                    stopPolling();
+                }, 1500);
+                return;
+            }
+        }
+    } catch (err) {
+        console.warn("[PULL] Polling uyarısı:", err);
+    }
+
+    // Recursive setTimeout (Asistan A - IPC çağrılarının üst üste binmesini %100 engeller)
+    if (_isPolling) {
+        _pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+    }
+}
+
+function renderState(state) {
+    if (!state) return;
+
+    // 1. Video Analiz Sonucu
+    if (state.video_info && state.video_info.source_url) {
+        if (state.video_info.source_url !== _lastRenderedVideoUrl) {
+            _lastRenderedVideoUrl = state.video_info.source_url;
+            updateUI(
+                state.video_info.title,
+                state.video_info.img_url,
+                state.video_info.sizes,
+                state.video_info.source_url,
+                state.video_info.playlist_entries,
+                state.video_info.max_height
+            );
+        }
+    }
+
+    // 2. Playlist Boyut Güncellemeleri
+    if (state.playlist_updates && Object.keys(state.playlist_updates).length > 0) {
+        for (const idxStr in state.playlist_updates) {
+            const idx = parseInt(idxStr);
+            updatePlaylistItemSize(idx, state.playlist_updates[idxStr]);
+        }
+    }
+
+    // 3. İlerleme Çubuğu ve Durum Metni
+    if (state.progress) {
+        updateProgress(
+            state.progress.percent || 0,
+            state.progress.text || "",
+            state.progress.pl_index,
+            state.progress.pl_total
+        );
+    }
+
+    // 4. İndirme Tamamlanma veya Hata Bildirimi
+    if (state.finish && state.version !== _lastFinishVersion) {
+        _lastFinishVersion = state.version;
+        finishDownload(state.finish.success, state.finish.message);
+    }
+
+    // 5. Duraklatma Görsel Durumu
+    if (state.is_paused !== undefined) {
+        const pauseIcon = document.getElementById('pauseIcon');
+        const pauseText = document.getElementById('pauseText');
+        if (pauseIcon && pauseText) {
+            if (state.is_paused) {
+                pauseIcon.innerText = "play_arrow";
+                pauseText.innerText = "DEVAM ET";
+            } else {
+                pauseIcon.innerText = "pause";
+                pauseText.innerText = "DURAKLAT";
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
 //  OTOMATİK ANALİZ
 // ═══════════════════════════════════════════════════════════
 
@@ -52,6 +164,7 @@ function autoAnalyze(url) {
         document.getElementById('inputLoader').classList.remove('hidden');
         if (window.pywebview && window.pywebview.api) {
             try {
+                startPolling();
                 pywebview.api.analyze(url, currentQuality);
             } catch (err) {
                 console.error("Analiz çağrısı hatası:", err);
@@ -191,6 +304,8 @@ function resetUI(force) {
     isPlaylistActive = false;
     playlistEntries = [];
     allSizes = {};
+    _lastRenderedVideoUrl = "";
+    _lastFinishVersion = -1;
     enableAllResolutionButtons();
 
     document.getElementById('playlistScrollContainer').classList.add('hidden');
@@ -280,6 +395,7 @@ function startDownload() {
     document.getElementById('statusText').innerText = "İndirme motoru başlatılıyor...";
 
     try {
+        startPolling();
         if (window.pywebview && window.pywebview.api) {
             pywebview.api.download(url, currentQuality, path, currentFormat, startTime, endTime);
         }
@@ -291,6 +407,7 @@ function startDownload() {
 
 async function togglePause() {
     try {
+        startPolling();
         if (window.pywebview && window.pywebview.api) {
             const isPaused = await pywebview.api.toggle_pause();
             const pauseIcon = document.getElementById('pauseIcon');
@@ -311,6 +428,7 @@ async function togglePause() {
 }
 
 function stopDownload() {
+    startPolling();
     if (window.pywebview && window.pywebview.api) {
         try {
             pywebview.api.stop_download();
@@ -542,7 +660,7 @@ function closeFullImage() {
 function updateSizeIfMatch() { /* kullanılmıyor */ }
 
 // ═══════════════════════════════════════════════════════════
-//  KLAVYE KISAYOLLARI
+//  KLAVYE KISAYOLLARI VE BAŞLANGIÇ
 // ═══════════════════════════════════════════════════════════
 
 window.addEventListener('keydown', (e) => {
@@ -553,3 +671,13 @@ window.addEventListener('keydown', (e) => {
         }
     }
 });
+
+// pywebview hazır olduğunda başlangıç durumunu çek
+window.addEventListener('pywebviewready', () => {
+    startPolling();
+});
+
+// Fallback: 500ms sonra ilk senkronizasyonu dene
+setTimeout(() => {
+    startPolling();
+}, 500);
