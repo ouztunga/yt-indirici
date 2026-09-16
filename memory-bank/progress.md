@@ -1,4 +1,4 @@
-<!-- last_updated: 2026-06-29 -->
+<!-- last_updated: 2026-09-16 -->
 # 📈 Progress Tracker / İlerleme Takipçisi
 
 > **AI Instruction:** Bu dosya projenin yol haritasıdır. Tamamlanan özellikleri, bekleyen maddeleri ve bilinen hataları takip eder. Görevler tamamlandıkça bu dosyayı güncel tutun.
@@ -22,20 +22,13 @@
 *   [x] Playlist indirme çökmeleri engellendi; silinmiş/gizli videoları atlamak için `ignoreerrors` eklendi.
 *   [x] Playlist video boyutlarının arka planda paralel thread ile dinamik taranması ve UI'da canlı gösterimi sağlandı.
 *   [x] Dosya boyutu hesaplamasındaki tutarsızlıklar giderildi (en yüksek kaliteli ses akışı seçilerek birleştirilen boyutlar doğru hesaplandı).
-*   [x] **Vibe Coding Entegrasyonu:** Proje kuralları, yoksayma listeleri ve yapılandırma dosyaları son gelen `vibecoding_yeni` klasöründeki güncel şablona göre güncellendi.
-*   [x] **Fallow (Codebase Intelligence) Entegrasyonu:** Fallow kod zekası entegrasyonu tamamlandı, Claude Code için `.claude` altındaki `/fallow` komut ve yetenek (skill) şablonları eklendi.
-*   [x] **Temizlik:** Güncelleme sonrasında geçici `vibecoding` ve yeni iletilen `vibecoding_yeni` klasörleri silinerek çalışma alanı temiz tutuldu.
 *   [x] **Instagram ve Sosyal Medya İndirme Desteği:** `cookies.txt` öncelikli kontrolü ile 6 popüler tarayıcı (Firefox, Chrome, Edge, Brave, Opera, Vivaldi) fall-back ve hata yakalama mekanizması eklendi.
-*   [x] **Açılışta Pencere Donması & "(Yanıt Vermiyor)" Kesin Olarak Çözüldü:** `--disable-renderer-accessibility` argümanı ve GPU shader disk önbelleği eklendi; Windows 11 UI Automation mesaj kuyruğu kilitlenmesi sonlandırıldı.
-*   [x] **Tailwind JIT Derleyicisi Kaldırıldı & Saf Statik CSS:** 418 KB'lık hantal `tailwind.min.js` yerine 22 KB'lık derlenmiş saf `index.css` entegre edildi. Açılış süresi 0.8 saniyeye indirildi; açılışta anında tıklama ve pencere taşıma pürüzsüz çalışıyor.
-*   [x] **360p Kısıtlaması & SABR Çözüldü:** `player_skip: ['configs', 'webpage']` kaldırılarak YouTube DASH/SABR formatları tekrar erişilebilir hale getirildi; 1080p-4K formatları tamamen aktif.
-*   [x] **IPC ve Evaluate_JS Deadlock'ı Çözüldü:** `_js_lock` kaldırıldı, asenkron ve güvenli IPC sağlandı.
-*   [x] **GC Stop-the-world Duraksamaları Giderildi:** Manuel `gc.collect()` kaldırıldı.
-*   [x] **Frontend Try-Catch & DOM Optimizasyonu:** `index.js` ve `index.html` zırhlandı.
+*   [x] **Windows 11 Başlat Arama İndeksi:** Start Menu Programs altına `YT Indirici.lnk` kısayolu yerleştirildi; `yt in` aramasında anında bulunup başlatılabiliyor.
+*   [x] **PUSH → PULL Hibrit Mimarisi:** Arka plan worker thread'lerindeki tüm `evaluate_js` çağrıları kaldırıldı; thread-safe state dict + version sayacı kuruldu.
+*   [x] **pywebview Reflection Deadlock Çözümü:** `EliteApi` nesnesinin dahili nitelikleri (`_window`, `_pause_event` vb.) private yapılarak .NET WinForms COM teftiş kilitlenmesi tamamen ortadan kaldırıldı; açılışta ve çalışma esnasında %100 responsive (`Responding = True`) sağlandı.
 
 ### Bekleyen Özellikler (Pending Features) ⏳
-*   [ ] İndirme motorunun kararlılığının son kez test edilmesi (`baslat.bat` üzerinden).
-*   [ ] Fallow'un tespit ettiği JS tekrarlarının giderilmesi (refactoring).
+*   [ ] Oğuz'un YouTube / Instagram / TikTok indirmelerini canlıda denemesi.
 *   [ ] Toplu indirme (batch download) desteği eklenmesi.
 *   [ ] Arayüzde karanlık/aydınlık tema (dark/light mode) geçiş düğmesi eklenmesi.
 
