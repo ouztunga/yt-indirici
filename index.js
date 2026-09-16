@@ -672,12 +672,8 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// pywebview hazır olduğunda başlangıç durumunu çek
-window.addEventListener('pywebviewready', () => {
-    startPolling();
-});
+// pywebview hazır olduğunda başlangıç durumunu çek (Kullanıcı eylem yapmadıkça polling yapma)
+// window.addEventListener('pywebviewready', () => {
+//     startPolling();
+// });
 
-// Fallback: 500ms sonra ilk senkronizasyonu dene
-setTimeout(() => {
-    startPolling();
-}, 500);

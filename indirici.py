@@ -60,22 +60,22 @@ class EliteApi:
     """pywebview JS API — tüm backend mantığı burada."""
 
     def __init__(self):
-        self.base_path = os.path.dirname(os.path.realpath(
+        self._base_path = os.path.dirname(os.path.realpath(
             sys.executable if getattr(sys, 'frozen', False) else __file__
         ))
-        self.download_path = os.path.join(os.path.expanduser("~"), "Downloads")
-        self.window = None          # pywebview pencere referansı
-        self.is_ready = False       # WebView2 tam yüklendi flag'i
-        self.last_info = None       # Son analiz edilen video bilgisi
-        self.should_stop = False    # İndirme durdurma flag'i
-        self.pause_event = threading.Event()
-        self.pause_event.set()      # Başlangıçta duraklatılmamış
+        self._download_path = os.path.join(os.path.expanduser("~"), "Downloads")
+        self._window = None          # pywebview pencere referansı (Private: pywebview get_functions teftiş deadlock'ını engeller)
+        self._is_ready = False       # WebView2 tam yüklendi flag'i
+        self._last_info = None       # Son analiz edilen video bilgisi
+        self._should_stop = False    # İndirme durdurma flag'i
+        self._pause_event = threading.Event()
+        self._pause_event.set()      # Başlangıçta duraklatılmamış
         self._cancel_event = threading.Event()  # Temiz iptal eventi
         self._lock = threading.Lock()           # Thread-safe state kilidi
         self._last_progress_time = 0      # UI throttling zaman damgası
-        self.last_downloaded_path = None  # En son indirilen yol
+        self._last_downloaded_path = None  # En son indirilen yol
         self._current_analyze_id = 0      # İptal kontrolü için analiz ID'si
-        self.last_working_cookie_mode = 'none'
+        self._last_working_cookie_mode = 'none'
 
         # ─────────────────────────────────────────────────────────
         # MERKEZİ THREAD-SAFE STATE (PULL / POLLING MİMARİSİ)
@@ -126,7 +126,7 @@ class EliteApi:
         """Öncelikle local cookies.txt var mı bak, yoksa okunabilir ve kilitli olmayan tarayıcı çerezlerini tara."""
         # 1. cookies.txt kontrolü (En kararlı ve kilitlenme riski olmayan yöntem)
         possible_txts = [
-            os.path.join(self.base_path, 'cookies.txt'),
+            os.path.join(self._base_path, 'cookies.txt'),
             os.path.join(os.getcwd(), 'cookies.txt'),
             os.path.join(os.path.expanduser("~"), "Downloads", "cookies.txt"),
             os.path.join(os.path.expanduser("~"), "Desktop", "cookies.txt"),
@@ -165,7 +165,7 @@ class EliteApi:
 
     def _ydl_opts(self, url="", force_browser=None, force_no_cookies=False, **extra):
         """Tüm yt-dlp çağrıları için ortak ve yüksek performanslı ayarlar."""
-        aria2_exe = os.path.join(self.base_path, "aria2c.exe")
+        aria2_exe = os.path.join(self._base_path, "aria2c.exe")
         use_aria2 = os.path.exists(aria2_exe)
 
         opts = {
@@ -209,7 +209,7 @@ class EliteApi:
                     opts['cookiefile'] = source_val
                 elif source_type == 'browser' and url and any(d in url.lower() for d in ['instagram.com', 'tiktok.com', 'twitter.com', 'x.com']):
                     # Yalnızca analiz aşamasında tarayıcı çerezi başarılı olduysa çerez ekle
-                    working_mode = getattr(self, 'last_working_cookie_mode', None)
+                    working_mode = getattr(self, '_last_working_cookie_mode', None)
                     if working_mode == 'browser':
                         opts['cookiesfrombrowser'] = (source_val, None, None, None)
 
@@ -323,7 +323,7 @@ class EliteApi:
     def analyze(self, url, quality="1080"):
         """JS'den çağrılır — arka plan thread'inde analiz başlatır."""
         if not url or url.strip() == "":
-            self.last_info = None
+            self._last_info = None
             self._update_state({
                 "status": "idle",
                 "is_busy": False,
@@ -389,16 +389,16 @@ class EliteApi:
                     info = ydl.extract_info(url, download=False)
                     if analyze_id != self._current_analyze_id:
                         return
-                    self.last_info = info
+                    self._last_info = info
 
                 # Başarılı — sonucu işle ve çalışan çerez modunu kaydet
-                self.last_working_cookie_mode = attempt['type']
-                title = self.last_info.get('title', 'Bilinmeyen Video')
+                self._last_working_cookie_mode = attempt['type']
+                title = self._last_info.get('title', 'Bilinmeyen Video')
 
                 # Thumbnail bulma
-                thumb = self.last_info.get('thumbnail', '')
+                thumb = self._last_info.get('thumbnail', '')
                 if not thumb and is_playlist:
-                    entries = self.last_info.get('entries', [])
+                    entries = self._last_info.get('entries', [])
                     if entries and entries[0]:
                         thumb = entries[0].get('thumbnail', '')
 
@@ -408,7 +408,7 @@ class EliteApi:
                 all_sizes = {}
 
                 if is_playlist:
-                    raw = self.last_info.get('entries', [])
+                    raw = self._last_info.get('entries', [])
                     for entry in raw:
                         if not entry:
                             continue
@@ -422,18 +422,18 @@ class EliteApi:
                         })
 
                     self.all_sizes_cache = {}  # video_url -> {quality: size_str}
-                    self.last_downloaded_path = None
+                    self._last_downloaded_path = None
                     count = len(playlist_entries)
                     all_sizes = {"audio": f"Playlist: {count} Ses"}
                     for q in ("360", "480", "720", "1080", "1440", "2160", "4320"):
                         all_sizes[q] = f"Playlist: {count} Video"
 
                 else:
-                    formats = self.last_info.get('formats', [])
+                    formats = self._last_info.get('formats', [])
                     heights = [f.get('height') for f in formats if f.get('height')]
                     if heights:
                         max_height = max(heights)
-                    all_sizes = self._calc_all_sizes(self.last_info)
+                    all_sizes = self._calc_all_sizes(self._last_info)
 
                 if analyze_id != self._current_analyze_id:
                     return
@@ -501,7 +501,7 @@ class EliteApi:
         """Her playlist videosunun boyut bilgilerini arka planda hesapla."""
 
         def fetch_one(idx, entry):
-            if self.should_stop or self._cancel_event.is_set():
+            if self._should_stop or self._cancel_event.is_set():
                 return
             video_id = entry.get('id')
             if not video_id:
@@ -535,7 +535,7 @@ class EliteApi:
         try:
             with ThreadPoolExecutor(max_workers=3) as executor:
                 for idx, entry in enumerate(entries):
-                    if self.should_stop:
+                    if self._should_stop:
                         break
                     executor.submit(fetch_one, idx, entry)
         except Exception as e:
@@ -547,11 +547,11 @@ class EliteApi:
 
     def get_size(self, quality, url=""):
         """JS'den çağrılır — setQuality fallback'i için."""
-        if not self.last_info:
+        if not self._last_info:
             return None
         if 'list=' in url:
             return "Hesaplanıyor..."
-        val = self._calc_size(self.last_info, quality)
+        val = self._calc_size(self._last_info, quality)
         return f"{val} MB" if val else "Bilinmiyor"
 
     # ═══════════════════════════════════════════════════════════
@@ -560,12 +560,12 @@ class EliteApi:
 
     def browse(self):
         try:
-            if not self.window:
+            if not self._window:
                 return None
-            result = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+            result = self._window.create_file_dialog(webview.FOLDER_DIALOG)
             if result and len(result) > 0:
-                self.download_path = result[0]
-                safe = self.download_path.replace("\\", "/")
+                self._download_path = result[0]
+                safe = self._download_path.replace("\\", "/")
                 return safe
             return None
         except Exception as e:
@@ -598,10 +598,10 @@ class EliteApi:
         if not url:
             return
         if not path or not path.strip():
-            path = self.download_path
-        self.should_stop = False
+            path = self._download_path
+        self._should_stop = False
         self._cancel_event.clear()
-        self.pause_event.set()
+        self._pause_event.set()
 
         self._update_state({
             "status": "downloading",
@@ -622,7 +622,7 @@ class EliteApi:
         ).start()
 
     def _download_thread(self, url, quality, path, start_time="", end_time=""):
-        ffmpeg_path = os.path.join(self.base_path, "ffmpeg.exe")
+        ffmpeg_path = os.path.join(self._base_path, "ffmpeg.exe")
 
         # Playlist ise alt klasör oluştur
         is_playlist = 'list=' in url
@@ -639,7 +639,7 @@ class EliteApi:
             except Exception as e:
                 logging.error(f"Playlist klasör hatası: {e}")
 
-        self.last_downloaded_path = path
+        self._last_downloaded_path = path
 
         # Zaman aralığı kesme hesaplama
         start_sec = self._parse_time_str(start_time)
@@ -659,7 +659,7 @@ class EliteApi:
             filename_tmpl = f'%(title)s{trim_tag} [{quality}p].%(ext)s'
 
         # Analiz aşamasında çalışan çerez moduna göre başla (analiz çerezsiz başardıysa çerezsiz indir)
-        force_no_cookies = (getattr(self, 'last_working_cookie_mode', 'none') == 'none')
+        force_no_cookies = (getattr(self, '_last_working_cookie_mode', 'none') == 'none')
 
         ydl_opts = self._ydl_opts(
             url=url,
@@ -708,7 +708,7 @@ class EliteApi:
         last_download_error = None
 
         for attempt, client_list in enumerate(clients_pool):
-            if self.should_stop or self._cancel_event.is_set():
+            if self._should_stop or self._cancel_event.is_set():
                 break
 
             ydl_opts_current = dict(ydl_opts)
@@ -727,7 +727,7 @@ class EliteApi:
             except Exception as e:
                 last_download_error = e
                 err_str = str(e)
-                if "STOP_REQUESTED" in err_str or self.should_stop or self._cancel_event.is_set():
+                if "STOP_REQUESTED" in err_str or self._should_stop or self._cancel_event.is_set():
                     break
 
                 # Çerez / DPAPI / Kilit hatası yakalanırsa çerezleri temizleyip hemen doğrudan dene
@@ -742,7 +742,7 @@ class EliteApi:
                             "text": "⚠️ Çerez kilidi aşıldı, doğrudan indiriliyor..."
                         }
                     })
-                    self.last_working_cookie_mode = 'none'
+                    self._last_working_cookie_mode = 'none'
                     ydl_opts.pop('cookiesfrombrowser', None)
                     ydl_opts.pop('cookiefile', None)
                     continue
@@ -762,7 +762,7 @@ class EliteApi:
             finally:
                 pass
 
-        if self.should_stop or self._cancel_event.is_set():
+        if self._should_stop or self._cancel_event.is_set():
             self._update_state({
                 "status": "idle",
                 "is_busy": False,
@@ -801,10 +801,10 @@ class EliteApi:
     def _progress_hook(self, d):
         """yt-dlp ilerleme hook'u — duraklatma ve durdurma kontrolü yapar (PULL — evaluate_js YOK)."""
         # Duraklatma
-        self.pause_event.wait()
+        self._pause_event.wait()
 
         # Durdurma / İptal
-        if self.should_stop or self._cancel_event.is_set():
+        if self._should_stop or self._cancel_event.is_set():
             raise yt_dlp.utils.DownloadCancelled("STOP_REQUESTED")
 
         if d['status'] != 'downloading':
@@ -866,7 +866,7 @@ class EliteApi:
     # ═══════════════════════════════════════════════════════════
 
     def open_download_folder(self, path=None):
-        target_path = self.last_downloaded_path if (self.last_downloaded_path and os.path.exists(self.last_downloaded_path)) else path
+        target_path = self._last_downloaded_path if (self._last_downloaded_path and os.path.exists(self._last_downloaded_path)) else path
         if not target_path:
             return
         target_path = os.path.normpath(target_path)
@@ -883,9 +883,9 @@ class EliteApi:
             logging.error(f"Klasör açılırken hata: {e}")
 
     def stop_download(self):
-        self.should_stop = True
+        self._should_stop = True
         self._cancel_event.set()
-        self.pause_event.set()   # Beklemedeyse çıkar
+        self._pause_event.set()   # Beklemedeyse çıkar
         self._update_state({
             "status": "idle",
             "is_busy": False,
@@ -894,24 +894,24 @@ class EliteApi:
         })
 
     def toggle_pause(self):
-        if self.pause_event.is_set():
-            self.pause_event.clear()
+        if self._pause_event.is_set():
+            self._pause_event.clear()
             self._update_state({
                 "is_paused": True,
                 "progress": {"text": "Duraklatıldı"}
             })
             return True     # Paused
         else:
-            self.pause_event.set()
+            self._pause_event.set()
             self._update_state({
                 "is_paused": False
             })
             return False    # Resumed
 
     def restart_app(self):
-        if self.window:
+        if self._window:
             try:
-                self.window.destroy()
+                self._window.destroy()
             except Exception:
                 pass
 
@@ -919,7 +919,7 @@ class EliteApi:
             exe = sys.executable
             cmd = f'cmd /c "ping 127.0.0.1 -n 3 >nul & start "" "{exe}""'
         else:
-            bat = os.path.join(self.base_path, "baslat.bat")
+            bat = os.path.join(self._base_path, "baslat.bat")
             if os.path.exists(bat):
                 cmd = f'cmd /c "ping 127.0.0.1 -n 3 >nul & start "" "{bat}""'
             else:
@@ -984,10 +984,10 @@ if __name__ == '__main__':
         html_content = html_content.replace('v1.2.0', f'v{__version__}')
 
         # Başlangıç değerlerini enjekte et (Pywebview on_loaded kilidini önlemek için)
-        safe_path = api.download_path.replace("\\", "/")
+        safe_path = api._download_path.replace("\\", "/")
         html_content = html_content.replace('>/Downloads/<', f'>{safe_path}<')
         
-        if not os.path.exists(os.path.join(api.base_path, "ffmpeg.exe")):
+        if not os.path.exists(os.path.join(api._base_path, "ffmpeg.exe")):
             html_content = html_content.replace(
                 'Sistem Durumu: Çalışıyor',
                 '⚠️ UYARI: ffmpeg.exe bulunamadı! İndirmeler çalışmayabilir.'
@@ -1010,19 +1010,19 @@ if __name__ == '__main__':
             min_size=(900, 600),
             background_color='#131313',
         )
-        api.window = window     # API'ye pencere referansı ver
+        api._window = window     # API'ye pencere referansı ver (Private: pywebview get_functions teftiş deadlock'ını engeller)
 
         # DOM ve Window tam yüklendiğinde is_ready flag'ini aktif et
         def on_loaded():
-            api.is_ready = True
+            api._is_ready = True
 
         window.events.loaded += on_loaded
 
         # Pencere kapatıldığında arka plandaki tüm thread'leri güvenle durdur (Asistan B)
         def on_closing():
-            api.should_stop = True
+            api._should_stop = True
             api._cancel_event.set()
-            api.pause_event.set()
+            api._pause_event.set()
 
         window.events.closing += on_closing
 
