@@ -18,8 +18,10 @@ let _lastVersion = -1;
 let _isPolling = false;
 let _lastRenderedVideoUrl = "";
 let _lastFinishVersion = -1;
+let _consecutiveIdleTicks = 0;
 
 function startPolling() {
+    _consecutiveIdleTicks = 0;
     if (_isPolling) return;
     _isPolling = true;
     poll();
@@ -27,6 +29,7 @@ function startPolling() {
 
 function stopPolling() {
     _isPolling = false;
+    _consecutiveIdleTicks = 0;
     if (_pollTimer) {
         clearTimeout(_pollTimer);
         _pollTimer = null;
@@ -44,12 +47,15 @@ async function poll() {
             }
 
             // Akıllı Polling Uyku Modu (Asistan B mantığı):
-            // Eğer durum "idle", "done" veya "error" ise ve backend meşgul değilse 1.5 sn sonra polling'i durdur
+            // Sadece arka arkaya en az 10 döngü (~2.5 saniye) boyunca backend kesinlikle boşta kaldıysa uykuya geç
             if (state && !state.is_busy && (state.status === "idle" || state.status === "done" || state.status === "error")) {
-                _pollTimer = setTimeout(() => {
+                _consecutiveIdleTicks++;
+                if (_consecutiveIdleTicks >= 10) {
                     stopPolling();
-                }, 1500);
-                return;
+                    return;
+                }
+            } else {
+                _consecutiveIdleTicks = 0;
             }
         }
     } catch (err) {
@@ -124,11 +130,16 @@ function renderState(state) {
 //  OTOMATİK ANALİZ
 // ═══════════════════════════════════════════════════════════
 
-function autoAnalyze(url) {
+function autoAnalyze(rawUrl, immediate = false) {
     if (isDownloading) return;
     if (analyzeTimeout) clearTimeout(analyzeTimeout);
 
-    if (!url || url.trim() === "") {
+    if (!rawUrl) {
+        resetUI();
+        return;
+    }
+    const url = rawUrl.trim();
+    if (url === "") {
         resetUI();
         return;
     }
@@ -137,6 +148,7 @@ function autoAnalyze(url) {
     currentUrl = url;
     document.getElementById('statusText').innerText = "Video verileri analiz ediliyor...";
     document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('inputLoader').classList.remove('hidden');
 
     const startBtn = document.getElementById('startBtn');
     startBtn.disabled = true;
@@ -148,7 +160,7 @@ function autoAnalyze(url) {
     thumb.src = LOGO_DATA || "logo.png";
     thumb.classList.add('max-w-[70%]', 'max-h-[70%]');
     thumb.classList.remove('w-full', 'h-full', 'object-cover');
-    document.getElementById('videoTitle').innerText = "Video Bekleniyor...";
+    document.getElementById('videoTitle').innerText = "Video Analiz Ediliyor...";
     document.getElementById('sizeBadge').classList.add('hidden');
 
     // Playlist durumunu sıfırla
@@ -160,19 +172,25 @@ function autoAnalyze(url) {
     document.getElementById('thumbContainer').classList.remove('hidden');
     document.getElementById('detailsBox').classList.remove('hidden');
 
-    analyzeTimeout = setTimeout(() => {
-        document.getElementById('inputLoader').classList.remove('hidden');
+    const doAnalyze = async () => {
         if (window.pywebview && window.pywebview.api) {
             try {
                 startPolling();
-                pywebview.api.analyze(url, currentQuality);
+                await pywebview.api.analyze(url, currentQuality);
+                startPolling();
             } catch (err) {
                 console.error("Analiz çağrısı hatası:", err);
                 document.getElementById('inputLoader').classList.add('hidden');
                 document.getElementById('statusText').innerText = "Analiz başlatılamadı: " + (err.message || err);
             }
         }
-    }, 1000);
+    };
+
+    if (immediate) {
+        doAnalyze();
+    } else {
+        analyzeTimeout = setTimeout(doAnalyze, 300);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -211,9 +229,13 @@ function setQuality(q, btn) {
 // ═══════════════════════════════════════════════════════════
 
 function updateUI(title, imgUrl, sizes, source_url, playlist_entries, max_height) {
-    // URL değiştiyse eski analizi gösterme
-    const currentInput = document.getElementById('urlInput').value;
-    if (!currentInput || currentInput.trim() === "" || currentInput !== source_url) {
+    // URL değiştiyse eski analizi gösterme (boşluksuz esnek kontrol)
+    const currentInput = (document.getElementById('urlInput').value || "").trim();
+    const sourceTrimmed = (source_url || "").trim();
+    if (!currentInput) {
+        return;
+    }
+    if (sourceTrimmed && currentInput !== sourceTrimmed && !currentInput.includes(sourceTrimmed) && !sourceTrimmed.includes(currentInput)) {
         return;
     }
 
@@ -672,8 +694,32 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// pywebview hazır olduğunda başlangıç durumunu çek (Kullanıcı eylem yapmadıkça polling yapma)
-// window.addEventListener('pywebviewready', () => {
-//     startPolling();
-// });
+// URL Girdisi için otomatik hızlı yapıştırma ve Enter tuşu dinleyicisi
+function initUrlInputEvents() {
+    const urlInput = document.getElementById('urlInput');
+    if (!urlInput) return;
+
+    urlInput.addEventListener('paste', (e) => {
+        const pastedText = (e.clipboardData || window.clipboardData)?.getData('text');
+        if (pastedText) {
+            setTimeout(() => {
+                autoAnalyze(urlInput.value || pastedText, true);
+            }, 30);
+        }
+    });
+
+    urlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            autoAnalyze(urlInput.value, true);
+        }
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initUrlInputEvents);
+} else {
+    initUrlInputEvents();
+}
+
 

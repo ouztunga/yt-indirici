@@ -69,7 +69,13 @@
                     <div class="animate-spin h-3 w-3 border-2 border-primary border-t-transparent rounded-full"></div>
                 </div>
             </div>
-            <input id="urlInput" oninput="autoAnalyze(this.value)" class="w-full bg-[#0e0e0e] border border-[#464554] rounded-lg px-4 py-3 text-white focus:border-[#c0c1ff] outline-none transition-all" placeholder="Link yapıştırın, otomatik analiz edilsin..." type="text"/>
+            <div class="relative flex items-center">
+                <input id="urlInput" oninput="autoAnalyze(this.value)" class="w-full bg-[#0e0e0e] border border-[#464554] rounded-lg pl-4 pr-28 py-3 text-white focus:border-[#c0c1ff] outline-none transition-all" placeholder="Link yapıştırın, otomatik analiz edilsin..." type="text"/>
+                <button id="analyzeBtn" onclick="autoAnalyze(document.getElementById('urlInput').value, true)" class="absolute right-2 px-3 py-1.5 bg-[#c0c1ff]/15 hover:bg-[#c0c1ff]/25 text-[#c0c1ff] text-xs font-semibold rounded-md border border-[#c0c1ff]/30 transition-all flex items-center gap-1 cursor-pointer">
+                    <span class="material-symbols-outlined text-sm">search</span>
+                    <span>Analiz Et</span>
+                </button>
+            </div>
         </div>
 
         <div class="mb-5">
