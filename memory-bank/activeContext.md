@@ -21,6 +21,12 @@
   * PowerShell üzerinden arka arkaya test edildi; uygulama her açılış saniyesinde aralıksız `Responding = True` olarak çalışıyor.
   * Mevcut modern Bento Grid koyu tema tasarımı, 8K-1080p çözünürlük butonları, zaman kesme (trim) ve Premiere Pro H264/AAC postprocessor motoru eksiksiz korundu.
 
+* [x] **Video Analiz Tetikleyicisi ve Polling Uyku Hatasının Çözümü:**
+  * Polling motorundaki erken uyku hatası giderildi (backend meşguliyetinden önce ilk karede uykuya geçmesi engellendi, 10 karelik eşik konuldu).
+  * `autoAnalyze` fonksiyonunda URL boşluk temizleme (`trim()`) eklendi, 1000ms gecikme yerine hızlı 300ms debounce ve anında analiz modu eklendi.
+  * URL input alanına `paste` ve `Enter` dinleyicileri bağlandı; ayrıca kullanıcıların dilediğinde tıklayabilmesi için şık bir **"Analiz Et"** arama butonu entegre edildi.
+  * `updateUI` içindeki katı URL karşılaştırması esnetildi; boşluk farklılıklarından ötürü analizin UI'a basılmaması riski sıfırlandı.
+
 ---
 
 ## 🔄 Son Değişiklikler (Recent Changes)
@@ -29,6 +35,7 @@
   * `cac84fe fix(deadlock): transition from push to pull hybrid architecture`
   * `b8acf34 checkpoint: remove accessibility disabling and fix pythonw stdio`
   * `fd92731 fix(deadlock): prevent pywebview reflection inspection deadlock on WinForms controls`
+  * `d1aa0c1 fix(analyze): resolve premature polling sleep, add Enter/paste listeners and Analiz Et button`
   * Tüm commit'ler GitHub `main` branch'ine başarıyla push edildi.
 
 ---
@@ -36,5 +43,6 @@
 ## 🚶‍♂️ Hemen Sonraki Adımlar (Immediate Next Steps)
 
 * [x] Uygulamanın `baslat.vbs` ve Start Menu kısayolu ile açılış doğrulaması.
-* [ ] Oğuz'un canlı video analiz ve indirme testi yapması.
+* [ ] Oğuz'un uygulamayı yeniden başlatıp linki yapıştırması / Analiz Et butonuna basması.
+
 
