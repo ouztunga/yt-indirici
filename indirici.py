@@ -3,14 +3,16 @@ import sys
 import io
 import tempfile
 
-# PyInstaller --noconsole modunda stdout/stderr None olacağı için donduran hataları önle
-if getattr(sys, 'frozen', False):
+# pythonw ve PyInstaller modunda stdout/stderr None olacağı için donduran çökmeleri önle
+if sys.stdout is None:
     sys.stdout = io.StringIO()
+if sys.stderr is None:
     sys.stderr = io.StringIO()
 
 # PYWEBVIEW_GUI, import webview'den ÖNCE ayarlanmalıdır!
 os.environ['PYWEBVIEW_GUI'] = 'edgechromium'
-os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--disable-renderer-accessibility --disable-features=RendererCodeIntegrity'
+# Windows 11 UI Automation mesaj kuyruğunu donduran --disable-renderer-accessibility kaldırıldı
+os.environ.pop('WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS', None)
 
 import webview
 import threading
