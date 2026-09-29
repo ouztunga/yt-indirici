@@ -316,6 +316,20 @@ class EliteApi:
     #  BOYUT HESAPLAMA
     # ═══════════════════════════════════════════════════════════
 
+    def _is_info_vertical(self, info_dict):
+        """Videonun dikey (Shorts / Reels / 9:16) olup olmadığını tespit eder."""
+        if not info_dict:
+            return False
+        formats = info_dict.get('formats', [])
+        v_fmts = [
+            f for f in formats 
+            if f.get('vcodec') not in (None, 'none') and f.get('width') and f.get('height')
+        ]
+        if v_fmts:
+            top_f = max(v_fmts, key=lambda f: (f.get('height') or 0) * (f.get('width') or 0))
+            return (top_f.get('height') or 0) > (top_f.get('width') or 0)
+        return False
+
     def _calc_size(self, info_dict, quality):
         """Tek bir kalite için MB cinsinden boyut hesapla.
 
@@ -339,13 +353,15 @@ class EliteApi:
                 return None
 
             target_h = int(quality)
+            is_vertical = self._is_info_vertical(info_dict)
+            dim_key = 'width' if is_vertical else 'height'
 
             # Video-only formatlar (yt-dlp bestvideo mantığı)
             video_fmts = [
                 f for f in formats
                 if f.get('vcodec') not in (None, 'none')
                 and f.get('acodec') in (None, 'none')
-                and 0 < (f.get('height') or 0) <= target_h
+                and 0 < (f.get(dim_key) or 0) <= target_h
             ]
 
             # Audio-only formatlar (yt-dlp bestaudio mantığı)
@@ -381,7 +397,7 @@ class EliteApi:
                 f for f in formats
                 if f.get('vcodec') not in (None, 'none')
                 and f.get('acodec') not in (None, 'none')
-                and 0 < (f.get('height') or 0) <= target_h
+                and 0 < (f.get(dim_key) or 0) <= target_h
             ]
             if muxed:
                 best_m = muxed[-1]
@@ -526,9 +542,11 @@ class EliteApi:
 
                 else:
                     formats = self._last_info.get('formats', [])
-                    heights = [f.get('height') for f in formats if f.get('height')]
-                    if heights:
-                        max_height = max(heights)
+                    is_vert = self._is_info_vertical(self._last_info)
+                    dim_k = 'width' if is_vert else 'height'
+                    dims = [f.get(dim_k) for f in formats if f.get(dim_k)]
+                    if dims:
+                        max_height = max(dims)
                     all_sizes = self._calc_all_sizes(self._last_info)
 
                 if analyze_id != self._current_analyze_id:
@@ -860,6 +878,21 @@ class EliteApi:
             ydl_opts['download_ranges'] = download_range_func(None, [(s_val, e_val)])
             ydl_opts['force_keyframes_at_cuts'] = True
 
+        # Dikey (Vertical / Shorts / Reels) video tespiti:
+        # Yatayda 'height<=1080' (1920x1080) kullanılırken, dikey videolarda 'width<=1080' (1080x1920) kullanılmalıdır!
+        is_vertical = False
+        if self._last_info:
+            is_vertical = self._is_info_vertical(self._last_info)
+        else:
+            try:
+                with yt_dlp.YoutubeDL(self._ydl_opts(url=url)) as ydl:
+                    info_peek = ydl.extract_info(url, download=False)
+                    is_vertical = self._is_info_vertical(info_peek)
+            except Exception:
+                pass
+
+        dim = "width" if is_vertical else "height"
+
         if quality == "audio":
             ydl_opts.update({
                 'format': 'bestaudio/best',
@@ -871,8 +904,13 @@ class EliteApi:
             })
         else:
             ydl_opts.update({
-                # Premiere Pro uyumluluğu için KESİN H264 (avc) ve AAC Ses (fallback ile)
-                'format': f'bestvideo[vcodec^=avc][height<={quality}]+bestaudio[ext=m4a]/bestvideo[vcodec^=avc][height<={quality}]+bestaudio/bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best',
+                # Premiere Pro uyumluluğu ve Dikey/Yatay akıllı çözünürlük seçimi
+                'format': (
+                    f'bestvideo[vcodec^=avc][{dim}<={quality}]+bestaudio[ext=m4a]/'
+                    f'bestvideo[vcodec^=avc][{dim}<={quality}]+bestaudio/'
+                    f'bestvideo[{dim}<={quality}]+bestaudio/'
+                    f'best[{dim}<={quality}]/best'
+                ),
                 'merge_output_format': 'mp4',
                 'postprocessor_args': {
                     'merger': ['-c:v', 'copy', '-c:a', 'aac'],
