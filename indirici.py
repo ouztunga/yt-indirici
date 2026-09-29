@@ -24,9 +24,10 @@ import time
 import subprocess
 import yt_dlp
 from yt_dlp.utils import download_range_func
+from yt_dlp.postprocessor import PostProcessor
 from concurrent.futures import ThreadPoolExecutor
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 
 
 def resource_path(relative_path):
@@ -54,6 +55,101 @@ logging.basicConfig(
 
 # pywebview'in iç hatalarını (özellikle EdgeChromium accessibility bug) loglamasını engelle
 logging.getLogger('pywebview').setLevel(logging.CRITICAL)
+
+
+class PremiereH264PP(PostProcessor):
+    """Adobe Premiere Pro için %100 uyumluluk zırhı:
+    İndirilen video VP9 veya AV1 gibi Premiere Pro'nun MP4 içinde açamadığı bir codec ise
+    otomatik ve kayıpsız olarak H.264 (AVC) + AAC'ye dönüştürür.
+    Zaten H.264 ise 0 gecikmeyle dokunmadan geçer.
+    """
+    def __init__(self, downloader=None, base_path=None, app=None):
+        super().__init__(downloader)
+        self.base_path = base_path or os.getcwd()
+        self.app = app
+
+    def run(self, info):
+        filepath = info.get('filepath')
+        if not filepath or not os.path.exists(filepath):
+            return [], info
+
+        # Ses dosyalarını atla (MP3, M4A vb.)
+        if filepath.lower().endswith(('.mp3', '.m4a', '.wav', '.flac', '.aac', '.ogg')):
+            return [], info
+
+        ffprobe_exe = os.path.join(self.base_path, "ffprobe.exe")
+        ffmpeg_exe = os.path.join(self.base_path, "ffmpeg.exe")
+        if not os.path.exists(ffprobe_exe) or not os.path.exists(ffmpeg_exe):
+            return [], info
+
+        # Codec tespiti
+        try:
+            cmd = [
+                ffprobe_exe,
+                "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=codec_name",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                filepath
+            ]
+            flags = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=flags)
+            vcodec = res.stdout.strip().lower()
+        except Exception as e:
+            logging.error(f"PremiereH264PP ffprobe hatası: {e}")
+            return [], info
+
+        # Zaten H264 ise hiçbir şey yapma (0 gecikme)
+        if not vcodec or vcodec in ('h264', 'avc1'):
+            return [], info
+
+        # Uyumsuz codec bulundu (örn. vp9, av01) -> H.264 dönüştürme
+        logging.info(f"Premiere Pro için H264 dönüştürülüyor ({vcodec} -> h264): {filepath}")
+        if self.app:
+            self.app._update_state({
+                "progress": {
+                    "percent": 99,
+                    "text": "🎬 Premiere Pro uyumu için optimize ediliyor (H.264)..."
+                }
+            })
+
+        target_path = os.path.splitext(filepath)[0] + ".mp4"
+        temp_path = filepath + ".prem_transcode.mp4"
+
+        try:
+            transcode_cmd = [
+                ffmpeg_exe,
+                "-y",
+                "-i", filepath,
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-crf", "18",
+                "-pix_fmt", "yuv420p",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                temp_path
+            ]
+            conv = subprocess.run(transcode_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=flags)
+            if conv.returncode == 0 and os.path.exists(temp_path):
+                if os.path.abspath(filepath) != os.path.abspath(target_path):
+                    if os.path.exists(filepath):
+                        try:
+                            os.remove(filepath)
+                        except Exception:
+                            pass
+                os.replace(temp_path, target_path)
+                info['filepath'] = target_path
+            else:
+                logging.error(f"FFmpeg transcode başarısız: {conv.stderr.decode('utf-8', errors='ignore')}")
+                if os.path.exists(temp_path):
+                    try:
+                        os.remove(temp_path)
+                    except Exception:
+                        pass
+        except Exception as e:
+            logging.error(f"PremiereH264PP transcode hatası: {e}")
+
+        return [], info
 
 
 class EliteApi:
@@ -590,6 +686,90 @@ class EliteApi:
         except Exception:
             return None
 
+    def _ensure_premiere_compatibility(self, target_path):
+        """İndirme sonrası hedef klasör veya dosyadaki tüm MP4'lerin H.264 + AAC olduğunu kesinleştirir.
+        Premiere Pro'nun desteklemediği VP9 / AV1 codec'li videoları anında H.264'e dönüştürür.
+        """
+        if not target_path or not os.path.exists(target_path):
+            return
+
+        ffprobe_exe = os.path.join(self._base_path, "ffprobe.exe")
+        ffmpeg_exe = os.path.join(self._base_path, "ffmpeg.exe")
+        if not os.path.exists(ffprobe_exe) or not os.path.exists(ffmpeg_exe):
+            return
+
+        flags = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+
+        files_to_check = []
+        if os.path.isfile(target_path):
+            if target_path.lower().endswith(('.mp4', '.mkv', '.webm', '.mov')):
+                files_to_check.append(target_path)
+        elif os.path.isdir(target_path):
+            for root, _, files in os.walk(target_path):
+                for f in files:
+                    if f.lower().endswith(('.mp4', '.mkv', '.webm', '.mov')):
+                        full_f = os.path.join(root, f)
+                        try:
+                            # Son 20 dakikada değiştirilmiş/oluşturulmuş dosyaları tara
+                            if time.time() - os.path.getmtime(full_f) < 1200:
+                                files_to_check.append(full_f)
+                        except Exception:
+                            pass
+
+        for fp in files_to_check:
+            if self._should_stop or self._cancel_event.is_set():
+                break
+            try:
+                cmd = [
+                    ffprobe_exe,
+                    "-v", "error",
+                    "-select_streams", "v:0",
+                    "-show_entries", "stream=codec_name",
+                    "-of", "default=noprint_wrappers=1:nokey=1",
+                    fp
+                ]
+                res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=flags)
+                vcodec = res.stdout.strip().lower()
+                if vcodec and vcodec not in ('h264', 'avc1'):
+                    logging.info(f"_ensure_premiere_compatibility: Dönüştürülüyor ({vcodec} -> h264): {fp}")
+                    self._update_state({
+                        "progress": {
+                            "percent": 99,
+                            "text": "🎬 Premiere Pro uyumu için optimize ediliyor (H.264)..."
+                        }
+                    })
+                    target_mp4 = os.path.splitext(fp)[0] + ".mp4"
+                    temp_mp4 = fp + ".prem_chk.mp4"
+                    transcode_cmd = [
+                        ffmpeg_exe,
+                        "-y",
+                        "-i", fp,
+                        "-c:v", "libx264",
+                        "-preset", "veryfast",
+                        "-crf", "18",
+                        "-pix_fmt", "yuv420p",
+                        "-c:a", "aac",
+                        "-b:a", "192k",
+                        temp_mp4
+                    ]
+                    conv = subprocess.run(transcode_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=flags)
+                    if conv.returncode == 0 and os.path.exists(temp_mp4):
+                        if os.path.abspath(fp) != os.path.abspath(target_mp4):
+                            if os.path.exists(fp):
+                                try:
+                                    os.remove(fp)
+                                except Exception:
+                                    pass
+                        os.replace(temp_mp4, target_mp4)
+                        logging.info(f"_ensure_premiere_compatibility: Başarıyla H264 yapıldı: {target_mp4}")
+                    elif os.path.exists(temp_mp4):
+                        try:
+                            os.remove(temp_mp4)
+                        except Exception:
+                            pass
+            except Exception as e:
+                logging.error(f"_ensure_premiere_compatibility hatası ({fp}): {e}")
+
     # ═══════════════════════════════════════════════════════════
     #  API: İNDİRME
     # ═══════════════════════════════════════════════════════════
@@ -721,6 +901,11 @@ class EliteApi:
 
             try:
                 with yt_dlp.YoutubeDL(ydl_opts_current) as ydl:
+                    if quality != "audio":
+                        ydl.add_post_processor(
+                            PremiereH264PP(base_path=self._base_path, app=self),
+                            when='after_move'
+                        )
                     ydl.download([url])
                 success = True
                 break
@@ -770,6 +955,8 @@ class EliteApi:
                 "progress": {"percent": 0, "text": "⚠️ İptal edildi.", "pl_index": None, "pl_total": None}
             })
         elif success:
+            if quality != "audio":
+                self._ensure_premiere_compatibility(path)
             self._update_state({
                 "status": "done",
                 "is_busy": False,
